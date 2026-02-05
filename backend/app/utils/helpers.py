@@ -1,0 +1,1 @@
+# Placeholder: Helper fonksiyonları gelecek

@@ -1,0 +1,4 @@
+// Placeholder .eslintignore
+node_modules
+dist
+build

@@ -1,0 +1,124 @@
+/* Import Design System */
+@import './styles/design-system.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    transition: background-color var(--transition-base), color var(--transition-base);
+  }
+
+  * {
+    scroll-behavior: smooth;
+  }
+
+  /* Google Fonts - Inter */
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+}
+
+@layer components {
+
+  /* Leaflet tooltip custom styling */
+  .province-tooltip {
+    @apply bg-white dark:bg-slate-800 !important;
+    @apply text-slate-900 dark:text-slate-100 !important;
+    @apply border-2 border-blue-500 dark:border-blue-400 !important;
+    @apply rounded-lg !important;
+    @apply shadow-xl !important;
+    @apply px-3 py-2 !important;
+    @apply backdrop-blur-sm !important;
+    opacity: 0 !important;
+    transform: translateY(5px) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    animation: tooltipFadeIn 0.2s ease-out forwards !important;
+  }
+
+  @keyframes tooltipFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(5px);
+    }
+
+    to {
+      opacity: 0.98;
+      transform: translateY(0);
+    }
+  }
+
+  .province-tooltip::before {
+    @apply border-t-blue-500 dark:border-t-blue-400 !important;
+  }
+
+  /* Leaflet marker hover effect */
+  .leaflet-interactive:hover {
+    transition: all 0.15s ease-in-out !important;
+  }
+
+  /* Loading animation */
+  @keyframes shimmer {
+    0% {
+      background-position: -1000px 0;
+    }
+
+    100% {
+      background-position: 1000px 0;
+    }
+  }
+
+  @keyframes pulse-subtle {
+
+    0%,
+    100% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0.8;
+    }
+  }
+
+  .animate-shimmer {
+    animation: shimmer 2s infinite linear;
+    background: linear-gradient(to right,
+        #f6f7f8 0%,
+        #edeef1 20%,
+        #f6f7f8 40%,
+        #f6f7f8 100%);
+    background-size: 1000px 100%;
+  }
+
+  .animate-pulse-subtle {
+    animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Smooth transitions */
+  .transition-all-smooth {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-slate-100 dark:bg-slate-800;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-400 dark:bg-slate-600 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-500 dark:bg-slate-500;
+  }
+}

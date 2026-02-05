@@ -1,0 +1,12 @@
+#root {
+  min-height: 100vh;
+}
+
+.province-tooltip {
+  background: #0f172a;
+  color: #f8fafc;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+}
