@@ -7,9 +7,18 @@ interface CardProps {
   headerRight?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
+  contentClassName?: string;
 }
 
-const Card: React.FC<CardProps> = ({ title, subtitle, icon, headerRight, children, className = '' }) => {
+const Card: React.FC<CardProps> = ({
+  title,
+  subtitle,
+  icon,
+  headerRight,
+  children,
+  className = '',
+  contentClassName = 'p-6',
+}) => {
   return (
     <div className={`bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden ${className}`}>
       {(title || icon || headerRight) && (
@@ -26,7 +35,7 @@ const Card: React.FC<CardProps> = ({ title, subtitle, icon, headerRight, childre
           </div>
         </div>
       )}
-      <div className="p-6">
+      <div className={contentClassName}>
         {children}
       </div>
     </div>

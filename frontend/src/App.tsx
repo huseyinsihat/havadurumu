@@ -13,6 +13,8 @@ import weatherApi from './services/weatherApi';
 import { useWeatherStore } from './store/useWeatherStore';
 import type { WeatherResponse } from './types';
 import { getWeatherIcon, getWeatherLabelTr } from './utils/colors';
+import { detectUserCoordinates, findNearestProvinceByCoordinates } from './utils/location';
+import { getIstanbulDateString, getIstanbulNow } from './utils/time';
 
 type CurrentSnapshot = {
   temperature: number;
@@ -41,6 +43,12 @@ type RainRankingItem = {
   code: string;
   name: string;
   precipitation: number;
+};
+
+type HumidityRankingItem = {
+  code: string;
+  name: string;
+  humidity: number;
 };
 
 const normalizeProvinceName = (value: string) =>
@@ -88,6 +96,27 @@ const toTurkishProvinceName = (name: string) => {
   const key = normalizeProvinceName(name);
   return TURKISH_PROVINCE_NAME_OVERRIDES[key] || name;
 };
+
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+const isValidIsoDate = (value: string) => {
+  if (!DATE_REGEX.test(value)) return false;
+  const [yearStr, monthStr, dayStr] = value.split('-');
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  const day = Number(dayStr);
+  if (Number.isNaN(year) || Number.isNaN(month) || Number.isNaN(day)) return false;
+
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+};
+
+const isValidTime = (value: string) => TIME_REGEX.test(value);
 
 const buildFallbackWeatherResponse = (params: {
   provinceName: string;
@@ -159,6 +188,8 @@ function App() {
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const snapshotRequestRef = useRef(0);
   const selectedWeatherRequestRef = useRef(0);
+  const autoLocateAttemptedRef = useRef(false);
+  const manualSelectionRef = useRef(false);
 
   const provinceNameByCode = useMemo(() => {
     const map: Record<string, string> = {};
@@ -187,12 +218,19 @@ function App() {
   }, [selectedPlateCode]);
 
   const selectedPlateInfo = useMemo(() => {
-    const code = String(selectedPlateNumeric).padStart(2, '0');
+    if (!selectedPlateCode) {
+      return {
+        code: '--',
+        name: 'Türkiye',
+      };
+    }
+
+    const code = String(selectedPlateCode).padStart(2, '0');
     return {
       code,
       name: provinceNameByCode[code] || `İl ${code}`,
     };
-  }, [provinceNameByCode, selectedPlateNumeric]);
+  }, [provinceNameByCode, selectedPlateCode]);
 
   const rankingData = useMemo<RankingItem[]>(() => {
     if (!currentWeather) return [];
@@ -224,12 +262,60 @@ function App() {
     return [...rainRankingData].sort((a, b) => a.precipitation - b.precipitation);
   }, [rainRankingData]);
 
+  const chartNationalAverages = useMemo(() => {
+    const rows = Object.values(currentWeather || {});
+    const avg = (values: number[]) => (values.length ? values.reduce((sum, val) => sum + val, 0) / values.length : null);
+
+    const toNumbers = (items: Array<number | undefined>) =>
+      items.map((value) => Number(value)).filter((value) => !Number.isNaN(value));
+
+    return {
+      temperature: avg(toNumbers(rows.map((item) => item.temperature))),
+      precipitation: avg(toNumbers(rows.map((item) => item.precipitation))),
+      windSpeed: avg(toNumbers(rows.map((item) => item.wind_speed))),
+      humidity: avg(toNumbers(rows.map((item) => item.humidity))),
+      pressure: avg(toNumbers(rows.map((item) => item.pressure_msl))),
+      visibility: avg(toNumbers(rows.map((item) => item.visibility))),
+      cloudCover: avg(toNumbers(rows.map((item) => item.cloud_cover))),
+    };
+  }, [currentWeather]);
+
+  const humidityRankingData = useMemo<HumidityRankingItem[]>(() => {
+    if (!currentWeather) return [];
+
+    return Object.entries(currentWeather)
+      .filter(([, data]) => data.humidity !== undefined && !Number.isNaN(data.humidity))
+      .map(([code, data]) => ({
+        code,
+        name: provinceNameByCode[code] || data.name || `Il ${code}`,
+        humidity: Number(data.humidity) || 0,
+      }))
+      .sort((a, b) => b.humidity - a.humidity);
+  }, [currentWeather, provinceNameByCode]);
+
+  const lowHumidityRankingData = useMemo<HumidityRankingItem[]>(() => {
+    return [...humidityRankingData].sort((a, b) => a.humidity - b.humidity);
+  }, [humidityRankingData]);
+
   const selectedCurrentSnapshot = useMemo(() => {
     if (!selectedPlateCode || !currentWeather) return undefined;
     return currentWeather[selectedPlateCode];
   }, [currentWeather, selectedPlateCode]);
 
   const selectedStatusText = useMemo(() => {
+    if (!selectedCurrentSnapshot) {
+      const temps = Object.values(currentWeather || {})
+        .map((item) => Number(item.temperature))
+        .filter((value) => !Number.isNaN(value));
+
+      if (temps.length > 0) {
+        const average = temps.reduce((sum, value) => sum + value, 0) / temps.length;
+        return `🌡️ ${average.toFixed(1)}°C`;
+      }
+
+      return '🌡️ -';
+    }
+
     const status = getWeatherLabelTr(selectedCurrentSnapshot?.weather_code);
     const icon = getWeatherIcon(selectedCurrentSnapshot?.weather_code);
     const temp =
@@ -237,7 +323,7 @@ function App() {
         ? `${selectedCurrentSnapshot.temperature.toFixed(1)}°C`
         : '-';
     return `${icon} ${status} ${temp}`;
-  }, [selectedCurrentSnapshot]);
+  }, [currentWeather, selectedCurrentSnapshot]);
 
   const selectedComparison = useMemo(() => {
     if (!selectedPlateCode || rankingData.length === 0) return null;
@@ -264,9 +350,7 @@ function App() {
   }, [provinces.length, rankingData, selectedPlateCode]);
 
   const handleNowClick = useCallback(() => {
-    const now = new Date();
-    const date = now.toISOString().split('T')[0];
-    const time = now.toTimeString().slice(0, 5);
+    const { date, time } = getIstanbulNow();
 
     setDateRange(date, date);
     setSelectedTime(time);
@@ -304,15 +388,7 @@ function App() {
         const geoJSON = await geoJsonResponse.json();
         setGeoJsonData(geoJSON);
 
-        const defaultProvince =
-          localizedProvinces.find((province) => String(province.plate_code).padStart(2, '0') === '34') ||
-          localizedProvinces[0] ||
-          null;
-
-        if (defaultProvince) {
-          const code = String(defaultProvince.plate_code).padStart(2, '0');
-          setSelectedProvince(defaultProvince, code);
-        }
+        setSelectedProvince(null, null);
       } catch (loadError) {
         const message = loadError instanceof Error ? loadError.message : 'Veri yükleme sırasında beklenmeyen hata.';
         setError(message);
@@ -323,6 +399,37 @@ function App() {
 
     loadData();
   }, [setError, setIsLoading, setProvinces, setSelectedProvince]);
+
+  useEffect(() => {
+    if (provinces.length === 0) return;
+    if (autoLocateAttemptedRef.current) return;
+    if (selectedProvince) return;
+
+    autoLocateAttemptedRef.current = true;
+    let cancelled = false;
+
+    const autoDetectAndSelect = async () => {
+      try {
+        const coordinates = await detectUserCoordinates();
+        if (!coordinates || cancelled) return;
+        if (manualSelectionRef.current) return;
+
+        const nearestProvince = findNearestProvinceByCoordinates(coordinates, provinces);
+        if (!nearestProvince) return;
+
+        const code = String(nearestProvince.plate_code).padStart(2, '0');
+        setSelectedProvince(nearestProvince, code);
+      } catch {
+        // Sessiz fallback: konum belirlenemezse Türkiye genel görünümde kal
+      }
+    };
+
+    autoDetectAndSelect();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [provinces, selectedProvince, setSelectedProvince]);
 
   useEffect(() => {
     const refreshSnapshot = async () => {
@@ -408,6 +515,7 @@ function App() {
 
   const handleProvinceSelect = useCallback(
     (plateCode: string, name: string) => {
+      manualSelectionRef.current = true;
       const normalizedCode = String(plateCode || '').padStart(2, '0');
 
       let province = provinces.find((item) => String(item.plate_code).padStart(2, '0') === normalizedCode) || null;
@@ -453,9 +561,10 @@ function App() {
         return;
       }
       const requestId = ++selectedWeatherRequestRef.current;
+      const isTodaySelected = selectedDateRange.startDate === getIstanbulDateString();
 
       try {
-        if (fallbackWeatherData) {
+        if (fallbackWeatherData && isTodaySelected) {
           setWeatherData(fallbackWeatherData);
         }
         setIsDetailLoading(true);
@@ -471,7 +580,7 @@ function App() {
         setError(null);
       } catch (refreshError) {
         if (requestId !== selectedWeatherRequestRef.current) return;
-        const hasCurrentFallback = Boolean(fallbackWeatherData);
+        const hasCurrentFallback = Boolean(fallbackWeatherData) && isTodaySelected;
         if (hasCurrentFallback) {
           setWeatherData(fallbackWeatherData);
           setError(null);
@@ -519,126 +628,133 @@ function App() {
           </div>
         )}
 
-        <div className="relative z-[2000]" onClick={(event) => event.stopPropagation()}>
-          <div className="flex gap-2">
-            <div className="flex-1 relative">
-              <div className="relative group">
-                <Search className="absolute left-3 top-3 w-5 h-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-                <input
-                  type="text"
-                  placeholder="İl adı veya plaka kodu yazın..."
-                  value={searchText}
-                  onChange={(event) => {
-                    setSearchText(event.target.value);
-                    setShowDropdown(true);
-                  }}
-                  onFocus={() => setShowDropdown(true)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-shadow"
-                />
-                {searchText && (
-                  <button
-                    onClick={() => setSearchText('')}
-                    className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                    aria-label="Aramayı temizle"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                )}
-              </div>
-
-              {showDropdown && (
-                <div
-                  className="absolute top-full left-0 right-0 mt-2 max-h-[300px] overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-xl z-[2000]"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  {filteredProvinces.map((province) => {
-                    const code = String(province.plate_code).padStart(2, '0');
-                    const weather = currentWeather?.[code];
-
-                    return (
+        <section className="space-y-3">
+          <div className="relative z-[2000]" onClick={(event) => event.stopPropagation()}>
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-800/95 shadow-lg px-3 py-3">
+              <div className="grid grid-cols-1 xl:grid-cols-12 gap-2 items-start">
+                <div className="xl:col-span-5 relative">
+                  <div className="relative group">
+                    <Search className="absolute left-3 top-3 w-5 h-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                    <input
+                      type="text"
+                      placeholder="İl adı veya plaka kodu yazın..."
+                      value={searchText}
+                      onChange={(event) => {
+                        setSearchText(event.target.value);
+                        setShowDropdown(true);
+                      }}
+                      onFocus={() => setShowDropdown(true)}
+                      className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-shadow"
+                    />
+                    {searchText && (
                       <button
-                        key={code}
-                        onClick={() => {
-                          handleProvinceSelect(code, province.name);
-                          setSearchText('');
-                          setShowDropdown(false);
-                        }}
-                        className={`w-full text-left px-4 py-3 hover:bg-blue-50 dark:hover:bg-blue-900/40 border-b border-slate-100 dark:border-slate-700 last:border-b-0 transition-colors ${
-                          selectedPlateCode === code ? 'bg-blue-50 dark:bg-blue-900/30 border-l-4 border-l-blue-500 pl-3' : ''
-                        }`}
+                        onClick={() => setSearchText('')}
+                        className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                        aria-label="Aramayı temizle"
                       >
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <p className="font-medium text-slate-900 dark:text-slate-100">{province.name}</p>
-                            <p className="text-xs text-slate-500">Plaka: {code} </p>
-                          </div>
-                          {weather && (
-                            <div className="text-right">
-                              <span className="text-sm font-bold block text-slate-700 dark:text-slate-200">
-                                {weather.temperature.toFixed(1)}°C
-                              </span>
-                              <span className="text-xs text-slate-400">Nem %{weather.humidity}</span>
-                            </div>
-                          )}
-                        </div>
+                        <X className="w-5 h-5" />
                       </button>
-                    );
-                  })}
+                    )}
+                  </div>
 
-                  {filteredProvinces.length === 0 && (
-                    <div className="px-4 py-8 text-center text-slate-400">
-                      <p>İl bulunamadı</p>
+                  {showDropdown && (
+                    <div
+                      className="absolute top-full left-0 right-0 mt-2 max-h-[300px] overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-xl z-[2000]"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      {filteredProvinces.map((province) => {
+                        const code = String(province.plate_code).padStart(2, '0');
+                        const weather = currentWeather?.[code];
+
+                        return (
+                          <button
+                            key={code}
+                            onClick={() => {
+                              handleProvinceSelect(code, province.name);
+                              setSearchText('');
+                              setShowDropdown(false);
+                            }}
+                            className={`w-full text-left px-4 py-3 hover:bg-blue-50 dark:hover:bg-blue-900/40 border-b border-slate-100 dark:border-slate-700 last:border-b-0 transition-colors ${
+                              selectedPlateCode === code ? 'bg-blue-50 dark:bg-blue-900/30 border-l-4 border-l-blue-500 pl-3' : ''
+                            }`}
+                          >
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <p className="font-medium text-slate-900 dark:text-slate-100">{province.name}</p>
+                                <p className="text-xs text-slate-500">Plaka: {code} </p>
+                              </div>
+                              {weather && (
+                                <div className="text-right">
+                                  <span className="text-sm font-bold block text-slate-700 dark:text-slate-200">
+                                    {weather.temperature.toFixed(1)}°C
+                                  </span>
+                                  <span className="text-xs text-slate-400">Nem %{weather.humidity}</span>
+                                </div>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+
+                      {filteredProvinces.length === 0 && (
+                        <div className="px-4 py-8 text-center text-slate-400">
+                          <p>İl bulunamadı</p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-              )}
-            </div>
-          </div>
-        </div>
 
-        <section>
-          <Card
-            title="Türkiye Haritası"
-            subtitle="İl seçmek için harita üzerinden tıklayın"
-            icon={<MapPin className="w-6 h-6" />}
-            headerRight={
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:min-w-[640px]">
-                <button
-                  onClick={handleNowClick}
-                  className="px-4 py-2 text-sm font-semibold rounded-lg border border-blue-300 dark:border-blue-600 text-blue-700 dark:text-blue-200 bg-blue-50/70 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
-                >
-                  Şimdi
-                </button>
+                <div className="xl:col-span-7">
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                    <div className="px-3 py-2 rounded-lg text-sm font-semibold text-blue-700 dark:text-blue-200 border border-blue-200 dark:border-blue-700 bg-blue-50/80 dark:bg-blue-900/30 text-center">
+                      {selectedPlateInfo.name}
+                    </div>
 
-                <input
-                  type="date"
-                  value={selectedDateRange.startDate}
-                  onChange={(event) => setDateRange(event.target.value, event.target.value)}
-                  min="1940-01-01"
-                  max={new Date().toISOString().split('T')[0]}
-                  className="px-3 py-2 rounded-lg text-sm font-medium border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  aria-label="Tarih seç"
-                />
+                    <div className="px-3 py-2 rounded-lg text-sm font-semibold text-indigo-700 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-700 bg-indigo-50/80 dark:bg-indigo-900/30 text-center">
+                      {selectedStatusText}
+                    </div>
 
-                <input
-                  type="time"
-                  value={selectedTime}
-                  onChange={(event) => setSelectedTime(event.target.value)}
-                  className="px-3 py-2 rounded-lg text-sm font-medium border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  aria-label="Saat seç"
-                />
+                    <input
+                      type="date"
+                      value={selectedDateRange.startDate}
+                      onChange={(event) => setDateRange(event.target.value, event.target.value)}
+                      min="1940-01-01"
+                      max={getIstanbulDateString()}
+                      className="px-3 py-2 rounded-lg text-sm font-medium border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      aria-label="Tarih seç"
+                    />
 
-                <div className="px-3 py-2 rounded-lg text-sm font-semibold text-indigo-700 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-700 bg-indigo-50/80 dark:bg-indigo-900/30 text-center">
-                  {selectedStatusText}
-                </div>
+                    <input
+                      type="time"
+                      value={selectedTime}
+                      onChange={(event) => setSelectedTime(event.target.value)}
+                      className="px-3 py-2 rounded-lg text-sm font-medium border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      aria-label="Saat seç"
+                    />
 
-                <div className="col-span-2 sm:col-span-4 text-[10px] text-slate-500 dark:text-slate-400 text-right pr-1">
-                  Anlık referans: {selectedDateRange.startDate} {selectedTime}
+                    <button
+                      onClick={handleNowClick}
+                      className="px-4 py-2 text-sm font-semibold rounded-lg border border-blue-300 dark:border-blue-600 text-blue-700 dark:text-blue-200 bg-blue-50/70 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+                    >
+                      Şimdi
+                    </button>
+                  </div>
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400 text-right pr-1 mt-1">
+                    Anlık referans: {selectedDateRange.startDate} {selectedTime}
+                  </div>
                 </div>
               </div>
-            }
-          >
-            <div className="h-[500px] rounded-lg overflow-hidden relative">
+            </div>
+          </div>
+
+          <Card contentClassName="p-0">
+            <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/40">
+              <MapPin className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <p className="text-sm text-slate-700 dark:text-slate-300">İl seçmek için harita üzerinden tıklayın</p>
+            </div>
+
+            <div className="h-[500px] rounded-none overflow-hidden relative">
               {isLoading && (
                 <div className="absolute inset-0 z-10 bg-white/50 dark:bg-slate-900/50 flex items-center justify-center">
                   <Loading />
@@ -652,7 +768,7 @@ function App() {
               />
             </div>
 
-            <div className="mt-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/40 px-3 py-2">
+            <div className="border-t border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/40 px-3 py-2">
               <div className="flex items-center justify-between text-[11px] font-semibold mb-1.5">
                 <span className="text-slate-600 dark:text-slate-300">Plaka Kaydırıcı (1-81)</span>
                 <span className="text-blue-700 dark:text-blue-300">
@@ -697,26 +813,36 @@ function App() {
               {displayWeatherData && <WeatherSummary data={displayWeatherData} current={selectedCurrentSnapshot} />}
 
               {selectedComparison && (
-                <div className="mt-4 p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-gradient-to-r from-slate-50 to-blue-50/30 dark:from-slate-900/50 dark:to-blue-900/10 space-y-3">
-                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Şehir sıcaklık karşılaştırması</p>
+                <div className="mt-4 p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-gradient-to-r from-slate-50 via-blue-50/30 to-indigo-50/20 dark:from-slate-900/50 dark:via-blue-900/10 dark:to-indigo-900/10 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Şehir sıcaklık karşılaştırması</p>
+                    <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 px-2 py-1 rounded-md bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
+                      Sıra #{selectedComparison.rank}/{selectedComparison.total}
+                    </span>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                    <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-2.5 bg-white dark:bg-slate-800">
-                      Türkiye ort.: <span className="font-semibold">{selectedComparison.average.toFixed(1)}°C</span>
+                    <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 bg-white dark:bg-slate-800">
+                      <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Türkiye ortalaması</div>
+                      <div className="font-bold text-slate-900 dark:text-slate-100">{selectedComparison.average.toFixed(1)}°C</div>
                     </div>
-                    <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-2.5 bg-white dark:bg-slate-800">
-                      Ortalamaya fark:{' '}
-                      <span className={`font-semibold ${selectedComparison.diffFromAverage >= 0 ? 'text-red-600' : 'text-blue-600'}`}>
+
+                    <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 bg-white dark:bg-slate-800">
+                      <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Ortalamaya fark</div>
+                      <div className={`font-bold ${selectedComparison.diffFromAverage >= 0 ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-300'}`}>
                         {selectedComparison.diffFromAverage >= 0 ? '+' : ''}
                         {selectedComparison.diffFromAverage.toFixed(1)}°C
-                      </span>
+                      </div>
                     </div>
-                    <div className="rounded-lg border border-orange-200 dark:border-orange-700 p-2.5 bg-orange-50/60 dark:bg-orange-900/20">
-                      En sıcak ({selectedComparison.hottest.name}):{' '}
-                      <span className="font-semibold">{selectedComparison.diffFromHottest.toFixed(1)}°C fark</span>
+
+                    <div className="rounded-lg border border-orange-200 dark:border-orange-700 p-3 bg-orange-50/70 dark:bg-orange-900/20">
+                      <div className="text-xs text-orange-700 dark:text-orange-300 mb-1">En sıcak il: {selectedComparison.hottest.name}</div>
+                      <div className="font-bold text-orange-700 dark:text-orange-300">{selectedComparison.diffFromHottest.toFixed(1)}°C altında</div>
                     </div>
-                    <div className="rounded-lg border border-blue-200 dark:border-blue-700 p-2.5 bg-blue-50/70 dark:bg-blue-900/20">
-                      En soğuk ({selectedComparison.coldest.name}):{' '}
-                      <span className="font-semibold text-blue-700 dark:text-blue-300">+{selectedComparison.diffFromColdest.toFixed(1)}°C üstünde</span>
+
+                    <div className="rounded-lg border border-blue-200 dark:border-blue-700 p-3 bg-blue-50/70 dark:bg-blue-900/20">
+                      <div className="text-xs text-blue-700 dark:text-blue-300 mb-1">En soğuk il: {selectedComparison.coldest.name}</div>
+                      <div className="font-bold text-blue-700 dark:text-blue-300">+{selectedComparison.diffFromColdest.toFixed(1)}°C üstünde</div>
                     </div>
                   </div>
                 </div>
@@ -779,6 +905,40 @@ function App() {
                   </div>
                 </div>
                 <div className="space-y-1.5">
+                  <h4 className="h-5 flex items-center text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-2 tracking-wide uppercase">En Nemli</h4>
+                  <div className="space-y-1.5">
+                    {humidityRankingData.slice(0, 3).map((item) => (
+                      <div
+                        key={`humid-high-${item.code}`}
+                        onClick={() => handleProvinceSelect(item.code, item.name)}
+                        className="p-2 rounded bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 border border-emerald-200 dark:border-emerald-700 cursor-pointer hover:shadow-md transition-all"
+                      >
+                        <div className="flex justify-between items-center gap-1">
+                          <span className="font-semibold text-sm text-slate-900 dark:text-slate-100 truncate">{item.name}</span>
+                          <span className="font-bold text-lg text-emerald-600 dark:text-emerald-300 whitespace-nowrap">{item.humidity.toFixed(0)}%</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <h4 className="h-5 flex items-center text-xs font-semibold text-teal-600 dark:text-teal-400 mb-2 tracking-wide uppercase">En Az Nemli</h4>
+                  <div className="space-y-1.5">
+                    {lowHumidityRankingData.slice(0, 3).map((item) => (
+                      <div
+                        key={`humid-low-${item.code}`}
+                        onClick={() => handleProvinceSelect(item.code, item.name)}
+                        className="p-2 rounded bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-900/20 dark:to-cyan-900/20 border border-teal-200 dark:border-teal-700 cursor-pointer hover:shadow-md transition-all"
+                      >
+                        <div className="flex justify-between items-center gap-1">
+                          <span className="font-semibold text-sm text-slate-900 dark:text-slate-100 truncate">{item.name}</span>
+                          <span className="font-bold text-lg text-teal-600 dark:text-teal-300 whitespace-nowrap">{item.humidity.toFixed(0)}%</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-1.5">
                   <h4 className="h-5 flex items-center text-xs font-semibold text-cyan-600 dark:text-cyan-400 mb-2 tracking-wide uppercase">En Yağışlı</h4>
                   <div className="space-y-1.5">
                     {rainRankingData.slice(0, 3).map((item) => (
@@ -822,9 +982,39 @@ function App() {
 
         {selectedProvince && displayWeatherData && (
           <section>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <WeatherCharts data={displayWeatherData} hourlyMode chartType="temperature" compact />
-              <WeatherCharts data={displayWeatherData} hourlyMode chartType="precipitation" compact />
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              <WeatherCharts
+                data={displayWeatherData}
+                hourlyMode
+                chartType="temp"
+                compact
+                contextLabel={`${selectedProvince.name} • ${selectedDateRange.startDate} • ${selectedTime}`}
+                nationalAverages={chartNationalAverages}
+              />
+              <WeatherCharts
+                data={displayWeatherData}
+                hourlyMode
+                chartType="rain"
+                compact
+                contextLabel={`${selectedProvince.name} • ${selectedDateRange.startDate} • ${selectedTime}`}
+                nationalAverages={chartNationalAverages}
+              />
+              <WeatherCharts
+                data={displayWeatherData}
+                hourlyMode
+                chartType="windHumidity"
+                compact
+                contextLabel={`${selectedProvince.name} • ${selectedDateRange.startDate} • ${selectedTime}`}
+                nationalAverages={chartNationalAverages}
+              />
+              <WeatherCharts
+                data={displayWeatherData}
+                hourlyMode
+                chartType="pressure"
+                compact
+                contextLabel={`${selectedProvince.name} • ${selectedDateRange.startDate} • ${selectedTime}`}
+                nationalAverages={chartNationalAverages}
+              />
             </div>
           </section>
         )}
@@ -832,7 +1022,17 @@ function App() {
 
       <footer className="mt-12 pb-8 text-center text-slate-500 dark:text-slate-400 text-sm space-y-1">
         <p>© 2026 Türkiye Hava Durumu Haritası | Open-Meteo API</p>
-        <p className="text-xs text-slate-400 dark:text-slate-500">Huseyin SIHAT tarafından geliştirilmiştir.</p>
+        <p className="text-xs text-slate-400 dark:text-slate-500">Hüseyin SIHAT tarafından geliştirilmiştir.</p>
+        <p className="text-xs text-slate-400 dark:text-slate-500">
+          <a
+            href="https://docs.google.com/forms/d/e/1FAIpQLSfdI9GncS207bb8TZkvdSfS2cvJCncQnkdWaK6dWv-3m1wcmA/viewform?usp=dialog"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-blue-600 dark:hover:text-blue-300 transition-colors"
+          >
+            Öneride Bulun
+          </a>
+        </p>
       </footer>
     </div>
   );

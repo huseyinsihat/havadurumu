@@ -78,6 +78,66 @@ def _safe_value(values, index: int, default):
     return values[index]
 
 
+def _is_hourly_series_usable(hourly_data: Optional[dict], min_points: int = 18) -> bool:
+    if not isinstance(hourly_data, dict):
+        return False
+
+    times = hourly_data.get('time')
+    if not isinstance(times, list):
+        return False
+
+    valid_hours = set()
+    for time_value in times:
+        hour_fraction = _extract_hour_fraction(str(time_value))
+        if hour_fraction is None:
+            continue
+        valid_hours.add(int(hour_fraction))
+
+    return len(valid_hours) >= min_points
+
+
+def _extract_province_hourly_from_payload(hourly_payload: Optional[dict], province_code: str) -> Optional[dict]:
+    if not isinstance(hourly_payload, dict):
+        return None
+
+    for item in hourly_payload.get('provinces', []):
+        if str(item.get('plate_code', '')).zfill(2) == province_code:
+            hourly = item.get('hourly')
+            if isinstance(hourly, dict):
+                return hourly
+            return None
+    return None
+
+
+def _normalize_hourly_payload(hourly_data: dict) -> dict:
+    return {
+        'time': hourly_data.get('time', []),
+        'temperature_2m': hourly_data.get('temperature_2m', []),
+        'apparent_temperature': hourly_data.get('apparent_temperature', []),
+        'precipitation': hourly_data.get('precipitation', []),
+        'wind_speed_10m': hourly_data.get('wind_speed_10m', []),
+        'wind_direction_10m': hourly_data.get('wind_direction_10m', []),
+        'relative_humidity_2m': hourly_data.get('relative_humidity_2m', []),
+        'pressure_msl': hourly_data.get('pressure_msl', []),
+        'visibility': hourly_data.get('visibility', []),
+        'cloud_cover': hourly_data.get('cloud_cover', []),
+        'weather_code': hourly_data.get('weather_code', []),
+    }
+
+
+async def _get_province_hourly_from_snapshot(date: str, province_code: str) -> Optional[dict]:
+    hourly_payload = _snapshot_cache_get(date)
+    if hourly_payload is None:
+        try:
+            hourly_payload = await _build_snapshot_hourly_payload(date)
+            _snapshot_cache_put(date, hourly_payload)
+        except Exception as snapshot_exc:
+            logger.warning('Hourly snapshot rebuild failed for %s on %s: %s', province_code, date, snapshot_exc)
+            return None
+
+    return _extract_province_hourly_from_payload(hourly_payload, province_code)
+
+
 def _snapshot_cache_get(date: str):
     entry = _snapshot_hourly_cache.get(date)
     if not entry:
@@ -181,21 +241,33 @@ async def get_weather(
                 current_time = current.get('time', datetime.now().isoformat())
 
                 if hourly_bool:
-                    weather_data = {
-                        'hourly': {
-                            'time': [current_time],
-                            'temperature_2m': [float(current.get('temperature_2m', 0))],
-                            'apparent_temperature': [float(current.get('apparent_temperature', current.get('temperature_2m', 0)))],
-                            'precipitation': [float(current.get('precipitation', 0))],
-                            'wind_speed_10m': [float(current.get('wind_speed_10m', 0))],
-                            'wind_direction_10m': [float(current.get('wind_direction_10m', 0))],
-                            'relative_humidity_2m': [int(current.get('relative_humidity_2m', 50))],
-                            'pressure_msl': [float(current.get('pressure_msl', 0))],
-                            'visibility': [float(current.get('visibility', 0))],
-                            'cloud_cover': [int(current.get('cloud_cover', 0))],
-                            'weather_code': [int(current.get('weather_code', 0))],
+                    province_hourly = await _get_province_hourly_from_snapshot(start_date, province)
+                    if _is_hourly_series_usable(province_hourly):
+                        weather_data = {
+                            'hourly': _normalize_hourly_payload(province_hourly),
                         }
-                    }
+                    else:
+                        if start_dt != datetime.now().date():
+                            raise HTTPException(
+                                status_code=503,
+                                detail='Secilen tarih icin saatlik seri verisi alinamadi. Lutfen tekrar deneyin.',
+                            )
+
+                        weather_data = {
+                            'hourly': {
+                                'time': [current_time],
+                                'temperature_2m': [float(current.get('temperature_2m', 0))],
+                                'apparent_temperature': [float(current.get('apparent_temperature', current.get('temperature_2m', 0)))],
+                                'precipitation': [float(current.get('precipitation', 0))],
+                                'wind_speed_10m': [float(current.get('wind_speed_10m', 0))],
+                                'wind_direction_10m': [float(current.get('wind_direction_10m', 0))],
+                                'relative_humidity_2m': [int(current.get('relative_humidity_2m', 50))],
+                                'pressure_msl': [float(current.get('pressure_msl', 0))],
+                                'visibility': [float(current.get('visibility', 0))],
+                                'cloud_cover': [int(current.get('cloud_cover', 0))],
+                                'weather_code': [int(current.get('weather_code', 0))],
+                            }
+                        }
                 else:
                     weather_data = {
                         'daily': {
@@ -206,6 +278,20 @@ async def get_weather(
                             'weather_code': [int(current.get('weather_code', 0))],
                         }
                     }
+
+        if hourly_bool and start_dt == end_dt:
+            hourly_candidate = weather_data.get('hourly') if isinstance(weather_data, dict) else None
+            if not _is_hourly_series_usable(hourly_candidate):
+                province_hourly = await _get_province_hourly_from_snapshot(start_date, province)
+                if _is_hourly_series_usable(province_hourly):
+                    weather_data = {
+                        'hourly': _normalize_hourly_payload(province_hourly),
+                    }
+                elif start_dt != datetime.now().date():
+                    raise HTTPException(
+                        status_code=503,
+                        detail='Secilen tarih icin saatlik seri verisi eksik. Lutfen tekrar deneyin.',
+                    )
 
         if hourly_bool and 'hourly' in weather_data:
             hourly_data = weather_data['hourly']

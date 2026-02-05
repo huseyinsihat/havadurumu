@@ -75,6 +75,19 @@ Frontend:
 └── data/             # Il verileri ve GeoJSON
 ```
 
+### Canlı Demo
+
+- **Frontend**: https://huseyinsihat.github.io/havadurumu
+- **Backend API**: https://havadurumu-api.onrender.com
+
+### Deployment
+
+#### Backend (Render.com)
+Backend Render.com üzerinde yayınlanır. Detaylı talimatlar için [RENDER_DEPLOYMENT.md](RENDER_DEPLOYMENT.md) dosyasına bakınız.
+
+#### Frontend (GitHub Pages)
+Frontend GitHub Pages üzerinde otomatik deploy edilir. Her `master` branch'e push yapıldığında GitHub Actions otomatik olarak deploy eder.
+
 ### Ekran Goruntuleri
 
 <p align="center">

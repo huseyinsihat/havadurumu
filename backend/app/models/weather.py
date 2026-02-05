@@ -21,13 +21,13 @@ class HourlyWeatherData(BaseModel):
     precipitation: List[float] = Field(..., description='Yagis (mm)')
     wind_speed_10m: List[float] = Field(..., description='Ruzgar hizi (km/h)')
     relative_humidity_2m: List[int] = Field(..., description='Nem orani (%)')
-    weather_code: Optional[List[int]] = Field(None, description='Hava kodu')
+    weather_code: Optional[List[Optional[int]]] = Field(None, description='Hava kodu')
 
-    apparent_temperature: Optional[List[float]] = Field(None, description='Hissedilen sicaklik (C)')
-    wind_direction_10m: Optional[List[float]] = Field(None, description='Ruzgar yonu (derece)')
-    pressure_msl: Optional[List[float]] = Field(None, description='Deniz seviyesi basinci (hPa)')
-    visibility: Optional[List[float]] = Field(None, description='Gorus mesafesi (metre)')
-    cloud_cover: Optional[List[int]] = Field(None, description='Bulutluluk (%)')
+    apparent_temperature: Optional[List[Optional[float]]] = Field(None, description='Hissedilen sicaklik (C)')
+    wind_direction_10m: Optional[List[Optional[float]]] = Field(None, description='Ruzgar yonu (derece)')
+    pressure_msl: Optional[List[Optional[float]]] = Field(None, description='Deniz seviyesi basinci (hPa)')
+    visibility: Optional[List[Optional[float]]] = Field(None, description='Gorus mesafesi (metre)')
+    cloud_cover: Optional[List[Optional[int]]] = Field(None, description='Bulutluluk (%)')
 
 
 class DailyWeatherData(BaseModel):

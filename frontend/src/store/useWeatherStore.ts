@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Province, WeatherResponse } from '../types';
+import { getIstanbulNow } from '../utils/time';
 
 type CurrentWeatherSnapshot = {
   temperature: number;
@@ -49,6 +50,16 @@ interface WeatherState {
 
 export const useWeatherStore = create<WeatherState>((set) => ({
   // Initial state
+  ...(() => {
+    const now = getIstanbulNow();
+    return {
+      selectedDateRange: {
+        startDate: now.date,
+        endDate: now.date,
+      },
+      selectedTime: now.time,
+    };
+  })(),
   provinces: [],
   selectedProvince: null,
   selectedPlateCode: null,
@@ -56,11 +67,6 @@ export const useWeatherStore = create<WeatherState>((set) => ({
   currentWeather: null,
   isLoading: false,
   error: null,
-  selectedDateRange: {
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0],
-  },
-  selectedTime: new Date().toTimeString().split(' ')[0].slice(0, 5),
   hourlyMode: true,
 
   // Actions
