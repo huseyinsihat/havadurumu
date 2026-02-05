@@ -1,5 +1,5 @@
 # End-to-End Test Script
-# Türkiye İklim Haritası - Sistem Test
+# Türkiye Hava Durumu Haritası - Sistem Test
 
 Write-Host "🧪 SISTEM TEST BAŞLANDI" -ForegroundColor Cyan -BackgroundColor Black
 Write-Host "================================" -ForegroundColor Cyan

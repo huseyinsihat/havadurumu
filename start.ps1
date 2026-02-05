@@ -1,12 +1,12 @@
 # Başlatma Scripti - Windows PowerShell
-# Türkiye İklim Haritası Uygulaması
+# Türkiye Hava Durumu Haritası Uygulaması
 
 $ErrorActionPreference = "Stop"
 $projectRoot = "C:\Users\SIHAT\iklim\openaiapi\havaiklimverisi"
 $pythonExe = "$projectRoot\.venv\Scripts\python.exe"
 
 Write-Host "═══════════════════════════════════════════════════════" -ForegroundColor Cyan
-Write-Host "   🌦️  Türkiye İklim Haritası - Başlatılıyor...      " -ForegroundColor Cyan
+Write-Host "   🌦️  Türkiye Hava Durumu Haritası - Başlatılıyor... " -ForegroundColor Cyan
 Write-Host "═══════════════════════════════════════════════════════" -ForegroundColor Cyan
 Write-Host ""
 
@@ -60,16 +60,16 @@ Start-Sleep -Seconds 3
 
 Write-Host ""
 Write-Host "═══════════════════════════════════════════════════════" -ForegroundColor Cyan
-Write-Host "   ✅ Uygulamalar başarıyla başlatıldı!              " -ForegroundColor Green
+Write-Host "   [OK] Uygulamalar basarili bir sekilde baslatildi!  " -ForegroundColor Green
 Write-Host "═══════════════════════════════════════════════════════" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "🌐 Arayüz:" -ForegroundColor Yellow
-Write-Host "   → http://localhost:5173" -ForegroundColor White -BackgroundColor DarkBlue
+Write-Host "[WEB] Arayuz:" -ForegroundColor Yellow
+Write-Host "   -> http://localhost:5173" -ForegroundColor White -BackgroundColor DarkBlue
 Write-Host ""
-Write-Host "📚 API Dokümantasyonu:" -ForegroundColor Yellow
-Write-Host "   → http://localhost:8000/docs" -ForegroundColor White -BackgroundColor DarkBlue
+Write-Host "[API] API Dokümantasyonu:" -ForegroundColor Yellow
+Write-Host "   -> http://localhost:8000/docs" -ForegroundColor White -BackgroundColor DarkBlue
 Write-Host ""
-Write-Host "⚠️  Not: Uygulamaları kapatmak için açılan terminal pencerelerini kapatın." -ForegroundColor Yellow
+Write-Host "[NOT] Uygulamalar: Acilan terminal pencerelerini kapayin." -ForegroundColor Yellow
 Write-Host ""
 Write-Host "Devam etmek için herhangi bir tuşa basın..." -ForegroundColor Gray
 $null = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")

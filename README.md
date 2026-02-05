@@ -77,9 +77,11 @@ Frontend:
 
 ### Ekran Goruntuleri
 
-![Ana ekran](frontend/src/utils/Ekran%20g%C3%B6r%C3%BCnt%C3%BCs%C3%BC%202026-02-05%20233807.png)
-![Harita ve detaylar](frontend/src/utils/Ekran%20g%C3%B6r%C3%BCnt%C3%BCs%C3%BC%202026-02-05%20233836.png)
-![Karanlik tema modal](frontend/src/utils/Ekran%20g%C3%B6r%C3%BCnt%C3%BCs%C3%BC%202026-02-05%20233846.png)
+<p align="center">
+	<img src="frontend/src/utils/Ekran%20g%C3%B6r%C3%BCnt%C3%BCs%C3%BC%202026-02-05%20233807.png" width="32%" alt="Ana ekran" />
+	<img src="frontend/src/utils/Ekran%20g%C3%B6r%C3%BCnt%C3%BCs%C3%BC%202026-02-05%20233836.png" width="32%" alt="Harita ve detaylar" />
+	<img src="frontend/src/utils/Ekran%20g%C3%B6r%C3%BCnt%C3%BCs%C3%BC%202026-02-05%20233846.png" width="32%" alt="Karanlik tema modal" />
+</p>
 
 ### Lisans
 
@@ -168,9 +170,11 @@ Frontend:
 
 ### Screenshots
 
-![Main screen](frontend/src/utils/Ekran%20g%C3%B6r%C3%BCnt%C3%BCs%C3%BC%202026-02-05%20233807.png)
-![Map and details](frontend/src/utils/Ekran%20g%C3%B6r%C3%BCnt%C3%BCs%C3%BC%202026-02-05%20233836.png)
-![Dark theme modal](frontend/src/utils/Ekran%20g%C3%B6r%C3%BCnt%C3%BCs%C3%BC%202026-02-05%20233846.png)
+<p align="center">
+	<img src="frontend/src/utils/Ekran%20g%C3%B6r%C3%BCnt%C3%BCs%C3%BC%202026-02-05%20233807.png" width="32%" alt="Main screen" />
+	<img src="frontend/src/utils/Ekran%20g%C3%B6r%C3%BCnt%C3%BCs%C3%BC%202026-02-05%20233836.png" width="32%" alt="Map and details" />
+	<img src="frontend/src/utils/Ekran%20g%C3%B6r%C3%BCnt%C3%BCs%C3%BC%202026-02-05%20233846.png" width="32%" alt="Dark theme modal" />
+</p>
 
 ### License
 

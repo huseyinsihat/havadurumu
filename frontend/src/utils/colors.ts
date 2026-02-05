@@ -72,19 +72,19 @@ export const getTemperatureScaleColor = (
 
 // Legend icin renk araliklari ve etiketleri
 export const TEMP_RANGES = [
-  { min: -Infinity, max: -10, color: '#1e3a8a', label: 'Cok Soguk (<-10 C)' },
-  { min: -10, max: 0, color: '#3b82f6', label: 'Soguk (-10 - 0 C)' },
-  { min: 0, max: 10, color: '#22c55e', label: 'Serin (0 - 10 C)' },
-  { min: 10, max: 18, color: '#84cc16', label: 'Ideal (10 - 18 C)' },
-  { min: 18, max: 25, color: '#fbbf24', label: 'Iliman (18 - 25 C)' },
-  { min: 25, max: 30, color: '#f97316', label: 'Sicak (25 - 30 C)' },
-  { min: 30, max: 35, color: '#ef4444', label: 'Cok Sicak (30 - 35 C)' },
-  { min: 35, max: Infinity, color: '#991b1b', label: 'Asiri Sicak (>35 C)' },
+  { min: -Infinity, max: -10, color: '#1e3a8a', label: 'Çok Soğuk (<-10°C)' },
+  { min: -10, max: 0, color: '#3b82f6', label: 'Soğuk (-10 - 0°C)' },
+  { min: 0, max: 10, color: '#22c55e', label: 'Serin (0 - 10°C)' },
+  { min: 10, max: 18, color: '#84cc16', label: 'İdeal (10 - 18°C)' },
+  { min: 18, max: 25, color: '#fbbf24', label: 'Ilıman (18 - 25°C)' },
+  { min: 25, max: 30, color: '#f97316', label: 'Sıcak (25 - 30°C)' },
+  { min: 30, max: 35, color: '#ef4444', label: 'Çok Sıcak (30 - 35°C)' },
+  { min: 35, max: Infinity, color: '#991b1b', label: 'Aşırı Sıcak (>35°C)' },
 ];
 
 // Hava durumu kodu icin ikon dondurur
 export const getWeatherIcon = (code?: number): string => {
-  if (!code) return '☁️';
+  if (code === undefined || code === null || Number.isNaN(code)) return '☁️';
 
   if (code === 0) return '☀️'; // Acik
   if (code <= 3) return '⛅'; // Parcali bulutlu
@@ -95,4 +95,20 @@ export const getWeatherIcon = (code?: number): string => {
   if (code <= 99) return '⛈️'; // Firtinali
 
   return '☁️';
+};
+
+export const getWeatherLabelTr = (code?: number): string => {
+  if (code === undefined || code === null) return 'Bilinmiyor';
+
+  if (code === 0) return 'Açık';
+  if ([1, 2].includes(code)) return 'Az bulutlu';
+  if (code === 3) return 'Kapalı';
+  if ([45, 48].includes(code)) return 'Sisli';
+  if (code >= 51 && code <= 67) return 'Yağmurlu';
+  if (code >= 71 && code <= 77) return 'Karlı';
+  if (code >= 80 && code <= 82) return 'Sağanak';
+  if (code >= 85 && code <= 86) return 'Kar sağanağı';
+  if (code >= 95 && code <= 99) return 'Fırtına';
+
+  return 'Değişken';
 };

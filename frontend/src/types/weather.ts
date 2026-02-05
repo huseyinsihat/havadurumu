@@ -35,9 +35,14 @@ export interface WeatherData {
   hourly?: {
     time: string[];
     temperature_2m: number[];
+    apparent_temperature?: number[];
     precipitation: number[];
     wind_speed_10m: number[];
+    wind_direction_10m?: number[];
     relative_humidity_2m: number[];
+    pressure_msl?: number[];
+    visibility?: number[];
+    cloud_cover?: number[];
     weather_code?: number[];
   };
   daily?: {

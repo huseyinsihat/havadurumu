@@ -1,11 +1,13 @@
 import React from 'react';
+import { Thermometer } from 'lucide-react';
 import { TEMP_RANGES } from '../../utils/colors';
 
 export const MapLegend: React.FC = () => {
   return (
     <div className="absolute top-4 right-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 p-4 text-xs min-w-[200px] z-[1000]">
       <div className="font-bold mb-3 text-slate-800 dark:text-slate-100 text-base flex items-center gap-2">
-        🌡️ Sıcaklık Skalası
+        <Thermometer className="w-4 h-4 text-red-500" />
+        Sıcaklık Skalası
       </div>
       <div className="space-y-2.5">
         {TEMP_RANGES.map((item) => (
@@ -25,4 +27,3 @@ export const MapLegend: React.FC = () => {
 };
 
 export default MapLegend;
-

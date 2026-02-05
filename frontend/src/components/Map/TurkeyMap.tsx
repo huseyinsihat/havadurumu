@@ -1,47 +1,125 @@
 ﻿import React, { useEffect, useMemo, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { useWeatherStore } from '../../store/useWeatherStore';
-import { getTemperatureColor, getTemperatureScaleColor } from '../../utils/colors';
-import MapLegend from './MapLegend';
 import type { Feature, Geometry } from 'geojson';
+
+import { useWeatherStore } from '../../store/useWeatherStore';
+import { getTemperatureColor } from '../../utils/colors';
+import type { Province } from '../../types';
+import MapLegend from './MapLegend';
 
 interface TurkeyMapProps {
   onProvinceSelect: (plateCode: string, name: string) => void;
   geoJsonData?: GeoJSON.GeoJsonObject | null;
+  provinces?: Province[];
   currentTemps?: Record<
     string,
-    { temperature: number; precipitation: number; humidity: number; wind_speed: number; name?: string }
+    {
+      temperature: number;
+      precipitation: number;
+      humidity: number;
+      wind_speed: number;
+      apparent_temperature?: number;
+      wind_direction_10m?: number;
+      pressure_msl?: number;
+      visibility?: number;
+      cloud_cover?: number;
+      weather_code?: number;
+      resolved_time?: string;
+      name?: string;
+    }
   > | null;
 }
 
 type ProvinceProps = {
-  plate_code: string;
-  name: string;
-  region?: string;
-  population?: number;
-  area_km2?: number;
+  plate_code?: string;
+  name?: string;
+  'name:tr'?: string;
+  admin_level?: string | number;
+  [key: string]: unknown;
 };
 
-export const TurkeyMap: React.FC<TurkeyMapProps> = ({ onProvinceSelect, geoJsonData, currentTemps }) => {
+const normalizeProvinceName = (value: string) => {
+  return value
+    .toLocaleLowerCase('tr')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/ı/g, 'i')
+    .replace(/[^a-z0-9]/g, '');
+};
+
+export const TurkeyMap: React.FC<TurkeyMapProps> = ({ onProvinceSelect, geoJsonData, provinces = [], currentTemps }) => {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const geoJsonLayerRef = useRef<L.GeoJSON | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
+
   const selectedPlateCode = useWeatherStore((state) => state.selectedPlateCode);
 
-  const temperatureRange = useMemo(() => {
-    const values = Object.values(currentTemps || {})
-      .map((item) => item?.temperature)
-      .filter((value): value is number => value !== undefined && value !== null && !Number.isNaN(value));
+  const codeByNormalizedName = useMemo(() => {
+    const map: Record<string, string> = {};
 
-    if (values.length === 0) {
+    provinces.forEach((province) => {
+      const normalized = normalizeProvinceName(province.name || '');
+      if (normalized) {
+        map[normalized] = String(province.plate_code).padStart(2, '0');
+      }
+    });
+
+    // Defensive aliases for known naming variations
+    if (!map.bilecik) map.bilecik = '11';
+    if (!map.sanliurfa) map.sanliurfa = '63';
+    if (!map.kirikkale) map.kirikkale = '71';
+    if (!map.osmaniye) map.osmaniye = '80';
+    if (!map.aksaray) map.aksaray = '68';
+
+    return map;
+  }, [provinces]);
+
+  const provinceNameByCode = useMemo(() => {
+    const map: Record<string, string> = {};
+    provinces.forEach((province) => {
+      const code = String(province.plate_code).padStart(2, '0');
+      map[code] = province.name;
+    });
+    return map;
+  }, [provinces]);
+
+  const resolvePlateCode = useMemo(() => {
+    return (props: ProvinceProps | undefined) => {
+      if (!props) return null;
+
+      const direct = String(props.plate_code || '').trim();
+      if (/^\d{1,2}$/.test(direct)) {
+        return direct.padStart(2, '0');
+      }
+
+      const names = [props['name:tr'], props.name]
+        .map((item) => String(item || '').trim())
+        .filter(Boolean);
+
+      for (const name of names) {
+        const normalized = normalizeProvinceName(name);
+        if (normalized && codeByNormalizedName[normalized]) {
+          return codeByNormalizedName[normalized];
+        }
+      }
+
       return null;
-    }
+    };
+  }, [codeByNormalizedName]);
 
-    return {
-      min: Math.min(...values),
-      max: Math.max(...values),
+  const resolveProvinceName = (props: ProvinceProps | undefined) => {
+    const nameTr = String(props?.['name:tr'] || '').trim();
+    const name = String(props?.name || '').trim();
+    return nameTr || name || 'Bilinmiyor';
+  };
+
+  const getPolygonColor = useMemo(() => {
+    return (plateCode: string | null): string => {
+      if (!plateCode || !currentTemps) return '#CBD5E1';
+      const temp = currentTemps[plateCode]?.temperature;
+      return getTemperatureColor(temp);
     };
   }, [currentTemps]);
 
@@ -65,15 +143,6 @@ export const TurkeyMap: React.FC<TurkeyMapProps> = ({ onProvinceSelect, geoJsonD
     };
   }, []);
 
-  const getPolygonColor = useMemo(() => {
-    return (plateCode: string): string => {
-      if (!currentTemps) return '#CBD5E1';
-      const normalizedCode = String(plateCode).padStart(2, '0');
-      const temp = currentTemps[normalizedCode]?.temperature;
-      return getTemperatureColor(temp);
-    };
-  }, [currentTemps]);
-
   useEffect(() => {
     if (!mapRef.current || !geoJsonData) return;
 
@@ -84,29 +153,35 @@ export const TurkeyMap: React.FC<TurkeyMapProps> = ({ onProvinceSelect, geoJsonD
       markersLayerRef.current.clearLayers();
     }
 
+    const createdMarkerCodes = new Set<string>();
+
     const geoJsonLayer = L.geoJSON(geoJsonData, {
-      filter: (feature) => feature.geometry.type !== 'Point',
+      filter: (feature) => {
+        const geometryOk = feature.geometry.type === 'Polygon' || feature.geometry.type === 'MultiPolygon';
+        if (!geometryOk) return false;
+
+        const props = (feature.properties || {}) as ProvinceProps;
+        const adminLevel = String(props.admin_level || '');
+        return adminLevel === '4';
+      },
       style: (feature?: Feature<Geometry, ProvinceProps>) => {
-        const rawCode = feature?.properties?.plate_code;
-        const plateCode = String(rawCode || '').padStart(2, '0');
-        const isSelected = selectedPlateCode === plateCode;
-        const fillColor = getPolygonColor(plateCode);
+        const plateCode = resolvePlateCode(feature?.properties);
+        const isSelected = Boolean(plateCode && selectedPlateCode === plateCode);
 
         return {
-          fillColor,
-          weight: isSelected ? 4 : 2,
+          fillColor: getPolygonColor(plateCode),
+          weight: isSelected ? 3.5 : 2,
           opacity: 1,
           color: isSelected ? '#2563eb' : '#475569',
-          dashArray: '',
-          fillOpacity: isSelected ? 0.9 : 0.75,
+          fillOpacity: isSelected ? 0.88 : 0.72,
         };
       },
       onEachFeature: (feature: Feature<Geometry, ProvinceProps>, layer: L.Layer) => {
-        const rawCode = feature.properties?.plate_code;
-        const plateCode = String(rawCode || '').padStart(2, '0');
-        const provinceName = feature.properties?.name || 'Bilinmiyor';
+        const plateCode = resolvePlateCode(feature.properties);
+        const resolvedName = resolveProvinceName(feature.properties);
+        const provinceName = plateCode ? provinceNameByCode[plateCode] || resolvedName : resolvedName;
 
-        const weatherData = currentTemps?.[plateCode];
+        const weatherData = plateCode ? currentTemps?.[plateCode] : undefined;
         const temp = weatherData?.temperature;
         const humidity = weatherData?.humidity;
 
@@ -117,7 +192,7 @@ export const TurkeyMap: React.FC<TurkeyMapProps> = ({ onProvinceSelect, geoJsonD
             tooltipContent += `<div style="font-size:14px;color:#64748b;">Nem: %${humidity.toFixed(0)}</div>`;
           }
         } else {
-          tooltipContent += '<div style="font-size:12px;color:#94a3b8;font-style:italic;">Veri yukleniyor...</div>';
+          tooltipContent += '<div style="font-size:12px;color:#94a3b8;font-style:italic;">Veri bekleniyor...</div>';
         }
 
         layer.bindTooltip(tooltipContent, {
@@ -127,7 +202,7 @@ export const TurkeyMap: React.FC<TurkeyMapProps> = ({ onProvinceSelect, geoJsonD
         });
 
         layer.on('click', () => {
-          if (plateCode && plateCode !== '00') {
+          if (plateCode) {
             onProvinceSelect(plateCode, provinceName);
           }
         });
@@ -141,43 +216,27 @@ export const TurkeyMap: React.FC<TurkeyMapProps> = ({ onProvinceSelect, geoJsonD
         });
 
         layer.on('mouseout', () => {
-          if (selectedPlateCode !== plateCode) {
+          if (!plateCode || selectedPlateCode !== plateCode) {
             (layer as L.Path).setStyle({
               weight: 2,
               color: '#475569',
-              fillOpacity: 0.75,
+              fillOpacity: 0.72,
             });
           }
         });
-      },
-    }).addTo(mapRef.current);
 
-    geoJsonLayerRef.current = geoJsonLayer;
-
-    if (markersLayerRef.current) {
-      geoJsonLayer.eachLayer((layer) => {
-        const feature = (layer as any).feature as Feature<Geometry, ProvinceProps>;
-        if (!feature) return;
-
-        const geomType = feature.geometry?.type;
-        if (geomType !== 'Polygon' && geomType !== 'MultiPolygon') return;
-
-        const rawCode = feature.properties?.plate_code;
-        const plateCode = String(rawCode || '').padStart(2, '0');
-        const provinceName = feature.properties?.name || 'Bilinmiyor';
+        if (!markersLayerRef.current || !plateCode || createdMarkerCodes.has(plateCode)) return;
 
         try {
           const bounds = (layer as L.Polygon).getBounds();
           if (!bounds.isValid()) return;
 
           const center = bounds.getCenter();
-          const weatherData = currentTemps?.[plateCode];
-          const temp = weatherData?.temperature;
-          const color = getTemperatureScaleColor(temp, temperatureRange?.min, temperatureRange?.max);
+          const markerColor = getTemperatureColor(temp);
 
           const marker = L.circleMarker(center, {
-            radius: 10,
-            fillColor: color,
+            radius: 9,
+            fillColor: markerColor,
             color: '#ffffff',
             weight: 2.5,
             opacity: 1,
@@ -186,53 +245,51 @@ export const TurkeyMap: React.FC<TurkeyMapProps> = ({ onProvinceSelect, geoJsonD
 
           const tempText = temp !== undefined && !Number.isNaN(temp) ? `${temp.toFixed(1)}°C` : '-°C';
           marker.bindTooltip(
-            `<div style="font-size:16px;font-weight:700;">${provinceName}</div><div style="font-size:18px;font-weight:700;color:#dc2626;margin-top:4px;">${tempText}</div>`,
-            {
-              direction: 'top',
-              offset: [0, -10],
-            }
+            `<div style="font-size:15px;font-weight:700;">${provinceName}</div><div style="font-size:17px;font-weight:700;color:#dc2626;margin-top:4px;">${tempText}</div>`,
+            { direction: 'top', offset: [0, -10] }
           );
 
           marker.on('click', () => {
             onProvinceSelect(plateCode, provinceName);
           });
 
-          markersLayerRef.current!.addLayer(marker);
+          markersLayerRef.current.addLayer(marker);
+          createdMarkerCodes.add(plateCode);
         } catch (error) {
           console.warn('Marker olusturma hatasi:', plateCode, error);
         }
-      });
-    }
+      },
+    }).addTo(mapRef.current);
+
+    geoJsonLayerRef.current = geoJsonLayer;
 
     return () => {
       if (mapRef.current && geoJsonLayerRef.current) {
         mapRef.current.removeLayer(geoJsonLayerRef.current);
       }
     };
-  }, [geoJsonData, currentTemps, selectedPlateCode, onProvinceSelect, getPolygonColor, temperatureRange]);
+  }, [currentTemps, geoJsonData, getPolygonColor, onProvinceSelect, provinceNameByCode, resolvePlateCode, selectedPlateCode]);
 
   useEffect(() => {
     if (!mapRef.current || !geoJsonLayerRef.current || !selectedPlateCode) return;
 
     geoJsonLayerRef.current.eachLayer((layer) => {
-      const feature = (layer as any).feature as Feature<Geometry, ProvinceProps>;
+      const feature = (layer as L.Layer & { feature?: Feature<Geometry, ProvinceProps> }).feature;
       if (!feature) return;
 
-      const rawCode = feature.properties?.plate_code;
-      const plateCode = String(rawCode || '').padStart(2, '0');
+      const plateCode = resolvePlateCode(feature.properties);
+      if (plateCode !== selectedPlateCode) return;
 
-      if (plateCode === selectedPlateCode) {
-        try {
-          const bounds = (layer as L.Polygon).getBounds();
-          if (bounds.isValid()) {
-            mapRef.current!.fitBounds(bounds, { padding: [50, 50], animate: true, duration: 0.5 });
-          }
-        } catch (error) {
-          console.warn('Zoom hatasi:', error);
+      try {
+        const bounds = (layer as L.Polygon).getBounds();
+        if (bounds.isValid()) {
+          mapRef.current!.fitBounds(bounds, { padding: [50, 50], animate: true, duration: 0.5 });
         }
+      } catch (error) {
+        console.warn('Zoom hatasi:', error);
       }
     });
-  }, [selectedPlateCode]);
+  }, [resolvePlateCode, selectedPlateCode]);
 
   return (
     <div className="relative w-full h-full" style={{ height: '500px' }}>

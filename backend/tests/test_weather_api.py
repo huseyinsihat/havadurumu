@@ -15,3 +15,7 @@ def test_provinces_endpoint():
 	payload = response.json()
 	assert "provinces" in payload
 	assert "total" in payload
+
+def test_snapshot_rejects_future_date():
+	response = client.get("/api/weather/snapshot", params={"date": "2999-01-01", "time": "12:00"})
+	assert response.status_code == 400

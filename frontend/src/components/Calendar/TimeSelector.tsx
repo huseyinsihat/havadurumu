@@ -26,7 +26,7 @@ export const TimeSelector: React.FC<TimeSelectorProps> = ({ hourlyMode, onToggle
             : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300'
         }`}
       >
-        Gunluk
+        Günlük
       </button>
     </div>
   );

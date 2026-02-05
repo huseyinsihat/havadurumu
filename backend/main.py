@@ -1,61 +1,58 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
 
-from app.config import settings
-from app.api import health, provinces, weather
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-# Logging
+from app.api import health, provinces, weather
+from app.config import settings
+from app.services.open_meteo import open_meteo
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Lifecycle events
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Uygulama başlangıç ve kapanış işlemleri"""
-    logger.info("🚀 Uygulama başlatılıyor...")
+    """Uygulama baslangic ve kapanis islemleri."""
+    logger.info('Uygulama baslatiliyor...')
     yield
-    logger.info("🛑 Uygulama kapatılıyor...")
+    await open_meteo.close()
+    logger.info('Uygulama kapatiliyor...')
 
-# FastAPI App
+
 app = FastAPI(
     title=settings.API_TITLE,
     version=settings.API_VERSION,
-    description="Türkiye'nin 81 ili için hava durumu ve iklim verileri API'si",
-    lifespan=lifespan
+    description="Turkiye'nin 81 ili icin hava durumu verileri API'si",
+    lifespan=lifespan,
 )
 
-# CORS Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=['*'],
+    allow_headers=['*'],
 )
 
-# Routers
-app.include_router(health.router, prefix="/api", tags=["Health"])
-app.include_router(provinces.router, prefix="/api", tags=["Provinces"])
-app.include_router(weather.router, prefix="/api", tags=["Weather"])
+app.include_router(health.router, prefix='/api', tags=['Health'])
+app.include_router(provinces.router, prefix='/api', tags=['Provinces'])
+app.include_router(weather.router, prefix='/api', tags=['Weather'])
 
-# Root endpoint
-@app.get("/")
+
+@app.get('/')
 async def root():
-    """API'nin ana sayfası"""
+    """API ana sayfasi."""
     return {
-        "message": "🌦️ Türkiye İklim Haritası API'sine hoş geldiniz!",
-        "version": settings.API_VERSION,
-        "docs": "/docs",
-        "redoc": "/redoc"
+        'message': "Turkiye Hava Durumu Haritasi API'sine hos geldiniz!",
+        'version': settings.API_VERSION,
+        'docs': '/docs',
+        'redoc': '/redoc',
     }
 
-if __name__ == "__main__":
+
+if __name__ == '__main__':
     import uvicorn
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=settings.DEBUG
-    )
+
+    uvicorn.run('main:app', host='0.0.0.0', port=8000, reload=settings.DEBUG)
