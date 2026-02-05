@@ -8,14 +8,14 @@ class Settings:
     """Uygulama ayarları"""
     
     # API
-    API_TITLE = "Türkiye İklim Haritası API"
+    API_TITLE = "Türkiye Hava Durumu Haritası API"
     API_VERSION = "1.0.0"
     DEBUG = os.getenv("DEBUG", "True").lower() == "true"
     
     # CORS
     ALLOWED_ORIGINS = os.getenv(
         "ALLOWED_ORIGINS",
-        "http://localhost:5173,http://localhost:5174,http://localhost:3000,http://localhost:8000"
+        "http://localhost:5173,http://localhost:5174,http://localhost:3000,http://localhost:8000,https://huseyinsihat.github.io"
     ).split(",")
     
     # Open-Meteo API

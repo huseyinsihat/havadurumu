@@ -1,7 +1,8 @@
 ﻿import axios from 'axios';
+import type { AxiosError } from 'axios';
 import type { WeatherResponse, Province } from '../types';
 
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 const REQUEST_RETRY_COUNT = 2;
 const REQUEST_RETRY_DELAY_MS = 600;
 
@@ -12,10 +13,15 @@ const apiClient = axios.create({
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const shouldRetryRequest = (error: any) => {
-  const status = error?.response?.status;
+const extractAxiosError = (error: unknown): AxiosError | null => {
+  return axios.isAxiosError(error) ? error : null;
+};
+
+const shouldRetryRequest = (error: unknown) => {
+  const axiosError = extractAxiosError(error);
+  const status = axiosError?.response?.status;
   if (!status) return true;
-  return status >= 500;
+  return status >= 500 || status === 429;
 };
 
 const requestWithRetry = async <T>(request: () => Promise<T>, retries = REQUEST_RETRY_COUNT): Promise<T> => {
@@ -37,19 +43,16 @@ const requestWithRetry = async <T>(request: () => Promise<T>, retries = REQUEST_
 };
 
 export const weatherApi = {
-  // Tum illerin listesini al
   getProvinces: async (): Promise<{ provinces: Province[]; total: number }> => {
     const response = await requestWithRetry(() => apiClient.get('/provinces'));
     return response.data;
   },
 
-  // Spesifik bir ili al
   getProvince: async (plateCode: string): Promise<Province> => {
     const response = await requestWithRetry(() => apiClient.get(`/provinces/${plateCode}`));
     return response.data;
   },
 
-  // Secilen il icin hava durumu al
   getWeather: async (
     province: string,
     startDate: string,
@@ -67,34 +70,36 @@ export const weatherApi = {
       hourly: hourly ? 'true' : 'false',
     };
 
-    console.log('%cAPI Request', 'color: blue; font-weight: bold', {
-      endpoint: '/weather',
-      params,
-    });
-
     try {
-      const response = await requestWithRetry(() => apiClient.get('/weather', { params }));
-      console.log('%cWeather response OK', 'color: green; font-weight: bold', response.data);
+      const response = await requestWithRetry(() => apiClient.get('/weather', { params, timeout: 25000 }));
       return response.data;
-    } catch (error: any) {
-      const msg = error.response?.data?.detail || error.message;
-      const status = error.response?.status || 'Unknown';
-      console.error('%cWeather API Error', 'color: red; font-weight: bold', {
-        status,
-        message: msg,
-        params,
-      });
-      throw new Error(`Hava durumu alinamadi (${status}): ${msg}`);
+    } catch (error) {
+      const axiosError = extractAxiosError(error);
+      const status = axiosError?.response?.status ?? 'Unknown';
+      const detail = (axiosError?.response?.data as { detail?: string } | undefined)?.detail;
+      const message = detail || axiosError?.message || (error instanceof Error ? error.message : 'Bilinmeyen hata');
+
+      throw new Error(`Hava durumu alinamadi (${status}): ${message}`);
     }
   },
 
-  // Tum iller icin anlik hava durumu al
   getCurrentWeather: async () => {
     const response = await requestWithRetry(() => apiClient.get('/weather/current'));
     return response.data;
   },
 
-  // Saglik kontrolu
+  getWeatherSnapshot: async (date: string, time: string) => {
+    const response = await requestWithRetry(
+      () =>
+        apiClient.get('/weather/snapshot', {
+          params: { date, time },
+          timeout: 120000,
+        }),
+      1
+    );
+    return response.data;
+  },
+
   health: async () => {
     const response = await requestWithRetry(() => apiClient.get('/health'));
     return response.data;
