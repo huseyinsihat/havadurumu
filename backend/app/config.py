@@ -15,7 +15,7 @@ class Settings:
     # CORS
     ALLOWED_ORIGINS = os.getenv(
         "ALLOWED_ORIGINS",
-        "http://localhost:5173,http://localhost:5174,http://localhost:3000,http://localhost:8000,https://huseyinsihat.github.io"
+        "http://localhost:5173,http://localhost:5174,http://localhost:3000,http://localhost:8000,https://huseyinsihat.github.io,https://huseyinsihat.github.io/havadurumu"
     ).split(",")
     
     # Open-Meteo API

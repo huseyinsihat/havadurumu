@@ -45,7 +45,7 @@ export default function Header() {
                   Türkiye Hava Durumu Haritası
                 </h1>
                 <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">
-                  Türkiye'nin 81 ili için saatlik ve karşılaştırmalı hava durumu verilerini görselleştirir.
+                  Türkiye&apos;nin 81 ili için saatlik ve karşılaştırmalı hava durumu verilerini görselleştirir.
                 </p>
               </div>
             </div>

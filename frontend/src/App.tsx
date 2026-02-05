@@ -357,6 +357,26 @@ function App() {
     setError(null);
   }, [setDateRange, setError, setSelectedTime]);
 
+  const normalizeDateTimeSelection = useCallback(
+    (nextDate: string, nextTime: string) => {
+      const now = getIstanbulNow();
+      const isDateValid = isValidIsoDate(nextDate) && nextDate <= now.date;
+      const isTimeValid = isValidTime(nextTime);
+
+      if (!isDateValid || !isTimeValid) {
+        setDateRange(now.date, now.date);
+        setSelectedTime(now.time);
+        setError(null);
+        return;
+      }
+
+      setDateRange(nextDate, nextDate);
+      setSelectedTime(nextTime);
+      setError(null);
+    },
+    [setDateRange, setError, setSelectedTime]
+  );
+
   useEffect(() => {
     const handleClickOutside = () => setShowDropdown(false);
     document.addEventListener('click', handleClickOutside);
@@ -434,6 +454,18 @@ function App() {
   useEffect(() => {
     const refreshSnapshot = async () => {
       if (provinces.length === 0) return;
+      const today = getIstanbulDateString();
+      if (
+        !isValidIsoDate(selectedDateRange.startDate) ||
+        selectedDateRange.startDate > today ||
+        !isValidTime(selectedTime)
+      ) {
+        const now = getIstanbulNow();
+        setDateRange(now.date, now.date);
+        setSelectedTime(now.time);
+        setError(null);
+        return;
+      }
       const requestId = ++snapshotRequestRef.current;
 
       try {
@@ -511,7 +543,16 @@ function App() {
     };
 
     refreshSnapshot();
-  }, [provinces.length, selectedDateRange.startDate, selectedTime, setCurrentWeather, setError, setIsLoading]);
+  }, [
+    provinces.length,
+    selectedDateRange.startDate,
+    selectedTime,
+    setCurrentWeather,
+    setDateRange,
+    setError,
+    setIsLoading,
+    setSelectedTime,
+  ]);
 
   const handleProvinceSelect = useCallback(
     (plateCode: string, name: string) => {
@@ -560,6 +601,18 @@ function App() {
         setIsDetailLoading(false);
         return;
       }
+      const today = getIstanbulDateString();
+      if (
+        !isValidIsoDate(selectedDateRange.startDate) ||
+        selectedDateRange.startDate > today ||
+        !isValidTime(selectedTime)
+      ) {
+        const now = getIstanbulNow();
+        setDateRange(now.date, now.date);
+        setSelectedTime(now.time);
+        setError(null);
+        return;
+      }
       const requestId = ++selectedWeatherRequestRef.current;
       const isTodaySelected = selectedDateRange.startDate === getIstanbulDateString();
 
@@ -603,8 +656,11 @@ function App() {
     selectedDateRange.endDate,
     selectedDateRange.startDate,
     selectedPlateCode,
+    selectedTime,
+    setDateRange,
     setError,
     setIsDetailLoading,
+    setSelectedTime,
     setWeatherData,
   ]);
 
@@ -718,7 +774,7 @@ function App() {
                     <input
                       type="date"
                       value={selectedDateRange.startDate}
-                      onChange={(event) => setDateRange(event.target.value, event.target.value)}
+                      onChange={(event) => normalizeDateTimeSelection(event.target.value, selectedTime)}
                       min="1940-01-01"
                       max={getIstanbulDateString()}
                       className="px-3 py-2 rounded-lg text-sm font-medium border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -728,7 +784,7 @@ function App() {
                     <input
                       type="time"
                       value={selectedTime}
-                      onChange={(event) => setSelectedTime(event.target.value)}
+                      onChange={(event) => normalizeDateTimeSelection(selectedDateRange.startDate, event.target.value)}
                       className="px-3 py-2 rounded-lg text-sm font-medium border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       aria-label="Saat seç"
                     />

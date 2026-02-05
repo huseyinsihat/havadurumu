@@ -17,6 +17,34 @@ const extractAxiosError = (error: unknown): AxiosError | null => {
   return axios.isAxiosError(error) ? error : null;
 };
 
+const normalizeDetailMessage = (detail: unknown): string | undefined => {
+  if (typeof detail === 'string') return detail;
+
+  if (Array.isArray(detail)) {
+    const parts = detail
+      .map((item) => {
+        if (typeof item === 'string') return item;
+        if (item && typeof item === 'object') {
+          const payload = item as { msg?: string; detail?: string; loc?: Array<string | number> };
+          const msg = payload.msg || payload.detail || JSON.stringify(item);
+          const loc = Array.isArray(payload.loc) ? payload.loc.join('.') : '';
+          return loc ? `${loc}: ${msg}` : msg;
+        }
+        return String(item);
+      })
+      .filter(Boolean);
+
+    return parts.length ? parts.join(' | ') : undefined;
+  }
+
+  if (detail && typeof detail === 'object') {
+    const payload = detail as { detail?: string; message?: string };
+    return payload.detail || payload.message || JSON.stringify(detail);
+  }
+
+  return undefined;
+};
+
 const shouldRetryRequest = (error: unknown) => {
   const axiosError = extractAxiosError(error);
   const status = axiosError?.response?.status;
@@ -76,7 +104,8 @@ export const weatherApi = {
     } catch (error) {
       const axiosError = extractAxiosError(error);
       const status = axiosError?.response?.status ?? 'Unknown';
-      const detail = (axiosError?.response?.data as { detail?: string } | undefined)?.detail;
+      const detailRaw = (axiosError?.response?.data as { detail?: unknown } | undefined)?.detail;
+      const detail = normalizeDetailMessage(detailRaw);
       const message = detail || axiosError?.message || (error instanceof Error ? error.message : 'Bilinmeyen hata');
 
       throw new Error(`Hava durumu alinamadi (${status}): ${message}`);
