@@ -391,7 +391,7 @@ function App() {
       try {
         const [{ provinces: provincesData }, geoJsonResponse] = await Promise.all([
           weatherApi.getProvinces(),
-          fetch('/data/turkey_provinces.geojson'),
+          fetch(`${import.meta.env.BASE_URL}data/turkey_provinces.geojson`),
         ]);
 
         const localizedProvinces = provincesData.map((province) => ({
