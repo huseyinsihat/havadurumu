@@ -29,10 +29,12 @@ jobs:
         working-directory: frontend
 
       - name: Build
-        run: tsc -b && vite build --mode production
+        run: npm run build
         working-directory: frontend
         env:
           NODE_ENV: production
+          VITE_API_URL: https://havaiklimverisi.onrender.com/api
+          VITE_BASE_URL: /havadurumu/
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
