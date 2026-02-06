@@ -33,7 +33,7 @@ jobs:
         working-directory: frontend
         env:
           NODE_ENV: production
-          VITE_API_URL: https://havadurumu.onrender.com/api
+          VITE_API_URL: https://havaiklimverisi.onrender.com/api
           VITE_BASE_URL: /havadurumu/
 
       - name: Deploy to GitHub Pages
