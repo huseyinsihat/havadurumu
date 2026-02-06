@@ -90,11 +90,33 @@ Frontend GitHub Pages üzerinde otomatik deploy edilir. Her `master` branch'e pu
 
 ### Ekran Goruntuleri
 
-<p align="center">
-	<img src="frontend/src/utils/Ekran%20g%C3%B6r%C3%BCnt%C3%BCs%C3%BC%202026-02-05%20233807.png" width="32%" alt="Ana ekran" />
-	<img src="frontend/src/utils/Ekran%20g%C3%B6r%C3%BCnt%C3%BCs%C3%BC%202026-02-05%20233836.png" width="32%" alt="Harita ve detaylar" />
-	<img src="frontend/src/utils/Ekran%20g%C3%B6r%C3%BCnt%C3%BCs%C3%BC%202026-02-05%20233846.png" width="32%" alt="Karanlik tema modal" />
-</p>
+#### Ana Harita Gorunumu
+Interaktif Turkiye haritasi, sicaklik renk skalasi ve kritik hava durumu olaylari
+
+![Ana Harita](screenshots/Ekran%20g%C3%B6r%C3%BCnt%C3%BCs%C3%BC%202026-02-06%20030732.png)
+
+#### Il Detay Sayfasi
+Secilen ilin detayli hava durumu verileri, karsilastirma ve canli grafikler
+
+![Il Detay](screenshots/Ekran%20g%C3%B6r%C3%BCnt%C3%BCs%C3%BC%202026-02-06%20030747.png)
+
+#### 24 Saatlik Grafik Analizi
+Sicaklik, yagis, ruzgar, nem, basinc, gorus ve bulutluluk grafikleri
+
+![Grafikler](screenshots/Ekran%20g%C3%B6r%C3%BCnt%C3%BCs%C3%BC%202026-02-06%20030758.png)
+
+### Ozellikler Detay
+
+- 🗺️ **Interaktif Harita**: Turkiye haritasi uzerinden il secimi
+- 🌡️ **Sicaklik Skalasi**: Renk kodlu sicaklik gorunumu
+- ⚠️ **Kritik Olaylar**: Firtina, kar, asiri sicak/soguk, yuksek ruzgar uyarilari haritada gosteriliyor
+- 📍 **Otomatik Konum**: Kullanici konumuna gore en yakin il otomatik seciliyor
+- 📊 **4 Grafik Turu**: Sicaklik, yagis, ruzgar/nem, gorus/bulutluluk
+- 🇹🇷 **Turkiye Ortalamalari**: Secilen ilin Turkiye ortalamalari ile karsilastirmasi
+- 📈 **Siralamalari**: En sicak/soguk, en yagisli/kurak, en nemli/kuru iller
+- 🕐 **Istanbul Saat Dilimi**: Turkiye saati ile tam uyumlu
+- 📅 **Tarih Secimi**: 1940'tan gunumuze gecmis veriler
+- ⏰ **Saatlik Veri**: 24 saatlik detayli analiz
 
 ### Lisans
 

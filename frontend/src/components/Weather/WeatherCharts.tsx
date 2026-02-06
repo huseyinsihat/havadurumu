@@ -296,8 +296,8 @@ const WeatherCharts: React.FC<WeatherChartsProps> = ({
   }
 
   if (normalizedType === 'rain') {
-    const hasRain = hasEnoughSeriesData(series.precipitation);
-    if (!hasRain) return noDataCard('🌧️ 24 Saatlik Yağış Geçişi (00:00 - 24:00)', 'Seçili gün için saatlik yağış serisi yetersiz');
+    const hasRainPressure = hasEnoughSeriesData(series.precipitation) || hasEnoughSeriesData(series.pressure);
+    if (!hasRainPressure) return noDataCard('🌧️🧭 24 Saatlik Yağış ve Basınç (00:00 - 24:00)', 'Seçili gün için saatlik yağış/basınç serisi yetersiz');
 
     const chartData = {
       labels: series.labels,
@@ -308,6 +308,15 @@ const WeatherCharts: React.FC<WeatherChartsProps> = ({
           borderColor: '#2563eb',
           backgroundColor: 'rgba(37,99,235,0.18)',
           borderWidth: 2,
+          yAxisID: 'yRain',
+        },
+        {
+          label: `🧭 Basınç (${fmt1(latest.pressure, ' hPa')})`,
+          data: series.pressure,
+          borderColor: '#f97316',
+          backgroundColor: 'rgba(249,115,22,0.10)',
+          borderWidth: 2,
+          yAxisID: 'yPressure',
         },
         {
           label: `${AVG_LABEL_PREFIX}Türkiye Ortalama Yağış`,
@@ -315,6 +324,15 @@ const WeatherCharts: React.FC<WeatherChartsProps> = ({
           borderColor: '#2563eb',
           borderDash: [4, 4],
           pointRadius: 0,
+          yAxisID: 'yRain',
+        },
+        {
+          label: `${AVG_LABEL_PREFIX}Türkiye Ortalama Basınç`,
+          data: toConstSeries(nationalAverages?.pressure ?? null),
+          borderColor: '#f97316',
+          borderDash: [4, 4],
+          pointRadius: 0,
+          yAxisID: 'yPressure',
         },
       ],
     };
@@ -323,11 +341,23 @@ const WeatherCharts: React.FC<WeatherChartsProps> = ({
       ...baseOptions,
       scales: {
         ...baseOptions.scales,
-        y: {
+        yRain: {
+          type: 'linear',
+          position: 'left',
           grid: { color: 'rgba(37,99,235,0.12)' },
           ticks: {
             callback(value) {
               return `${Number(value).toFixed(1)} mm`;
+            },
+          },
+        },
+        yPressure: {
+          type: 'linear',
+          position: 'right',
+          grid: { drawOnChartArea: false },
+          ticks: {
+            callback(value) {
+              return `${Number(value).toFixed(1)} hPa`;
             },
           },
         },
@@ -340,6 +370,7 @@ const WeatherCharts: React.FC<WeatherChartsProps> = ({
               const v = ctx.parsed.y;
               const label = stripAveragePrefix(ctx.dataset.label);
               if (v === null || Number.isNaN(v)) return `${label}: -`;
+              if (ctx.dataset.yAxisID === 'yPressure') return `${label}: ${Number(v).toFixed(1)} hPa`;
               return `${label}: ${Number(v).toFixed(1)} mm`;
             },
           },
@@ -350,7 +381,7 @@ const WeatherCharts: React.FC<WeatherChartsProps> = ({
     return (
       <div className={`bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 ${cardPaddingClass} shadow-sm`}>
         <div className="mb-2">
-          <h3 className={titleClass}>🌧️ 24 Saatlik Yağış Geçişi (00:00 - 24:00)</h3>
+          <h3 className={titleClass}>🌧️🧭 24 Saatlik Yağış ve Basınç (00:00 - 24:00)</h3>
           {contextLabel && <p className="text-xs text-slate-500 dark:text-slate-400 -mt-1">{contextLabel}</p>}
         </div>
         <Line data={chartData} options={options} />
