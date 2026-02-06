@@ -81,3 +81,13 @@ Thumbs.db
 .prettier-ignore
 .turbo/
 dist/
+
+# 📝 Documentation (except README)
+HIZLI_BASLAT.md
+IYILESTIRME_PLANI_V2.md
+IYILESTIRME_PLANI.md
+PROJE_RAPORU.md
+RENDER_DEPLOYMENT.md
+SPEC.md
+TASKS.md
+VERI_ANALIZI.md
