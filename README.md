@@ -5,8 +5,8 @@
 ### Interaktif hava durumu platformu - 81 il için gerçek zamanlı iklim verileri
 
 [![Live Demo](https://img.shields.io/badge/🌐_Canlı_Demo-Hemen_Dene-00D9FF?style=for-the-badge)](https://huseyinsihat.github.io/havadurumu/)
-[![API](https://img.shields.io/badge/API-Online-00C853?style=for-the-badge)](https://havadurumu-api.onrender.com)
-[![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
+[![API](https://img.shields.io/badge/API-Online-00C853?style=for-the-badge)](https://havaiklimverisi.onrender.com)
+[![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](https://github.com/huseyinsihat/havadurumu/blob/main/LICENSE)
 
 [🇹🇷 Türkçe](#-özellikler) • [🇬🇧 English](#-features)
 

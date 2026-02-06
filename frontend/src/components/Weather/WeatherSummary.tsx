@@ -86,12 +86,12 @@ export const WeatherSummary: React.FC<WeatherSummaryProps> = ({ data, current })
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="p-3.5 rounded-lg bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 border border-red-200 dark:border-red-700">
           <div className="text-xs font-medium text-slate-600 dark:text-slate-300 mb-1 inline-flex items-center gap-1">
             {tempExtremeIcon && <span>{tempExtremeIcon}</span>}Sıcaklık / Hissedilen
           </div>
-          <div className="text-xl font-bold text-red-600 dark:text-red-400">
+            <div className="text-lg sm:text-xl font-bold text-red-600 dark:text-red-400">
             {tempText}
             <span className="text-base font-semibold text-orange-600 dark:text-orange-300 ml-1">/ {apparentText}</span>
           </div>
@@ -101,7 +101,7 @@ export const WeatherSummary: React.FC<WeatherSummaryProps> = ({ data, current })
           <div className="text-xs font-medium text-slate-600 dark:text-slate-300 mb-1 inline-flex items-center gap-1">
             {humidityExtremeIcon && <span>{humidityExtremeIcon}</span>}Nem
           </div>
-          <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
+          <div className="text-lg sm:text-xl font-bold text-blue-600 dark:text-blue-400">
             {humidityNow !== undefined && humidityNow !== null ? humidityNow.toFixed(0) : '-'}%
           </div>
         </div>
@@ -110,11 +110,11 @@ export const WeatherSummary: React.FC<WeatherSummaryProps> = ({ data, current })
           <div className="text-xs font-medium text-slate-600 dark:text-slate-300 mb-1 inline-flex items-center gap-1">
             {windExtremeIcon && <span>{windExtremeIcon}</span>}Rüzgar
           </div>
-          <div className="flex items-center justify-between gap-2">
-            <div className="text-xl font-bold text-green-600 dark:text-green-400">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-2">
+            <div className="text-lg sm:text-xl font-bold text-green-600 dark:text-green-400">
               {windNow !== undefined && windNow !== null ? windNow.toFixed(1) : '-'} km/h
             </div>
-            <div className="text-xs text-emerald-700 dark:text-emerald-300 inline-flex items-center gap-1 whitespace-nowrap">
+            <div className="text-xs text-emerald-700 dark:text-emerald-300 inline-flex items-center gap-1">
               <Compass className="w-3.5 h-3.5" />
               {getWindDirectionLabel(windDirectionNow)}
             </div>
@@ -125,7 +125,7 @@ export const WeatherSummary: React.FC<WeatherSummaryProps> = ({ data, current })
           <div className="text-xs font-medium text-slate-600 dark:text-slate-300 mb-1 inline-flex items-center gap-1">
             {rainExtremeIcon && <span>{rainExtremeIcon}</span>}Yağış
           </div>
-          <div className="text-xl font-bold text-purple-600 dark:text-purple-400">
+          <div className="text-lg sm:text-xl font-bold text-purple-600 dark:text-purple-400">
             {rainNow !== undefined && rainNow !== null ? rainNow.toFixed(1) : '-'} mm
           </div>
         </div>

@@ -39,6 +39,26 @@
     transform: translateY(5px) !important;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
     animation: tooltipFadeIn 0.2s ease-out forwards !important;
+    pointer-events: none !important;
+  }
+
+  .province-preview-tooltip {
+    @apply bg-white dark:bg-slate-800 !important;
+    @apply text-slate-900 dark:text-slate-100 !important;
+    @apply border border-slate-300 dark:border-slate-600 !important;
+    @apply rounded-md !important;
+    @apply shadow-md !important;
+    @apply px-2 py-1.5 !important;
+    @apply backdrop-blur-sm !important;
+    opacity: 0 !important;
+    transform: translateY(5px) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    animation: tooltipFadeIn 0.2s ease-out forwards !important;
+    pointer-events: none !important;
+  }
+
+  .province-preview-tooltip .leaflet-tooltip-content {
+    margin: 0 !important;
   }
 
   @keyframes tooltipFadeIn {

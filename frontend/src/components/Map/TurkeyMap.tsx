@@ -4,7 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import type { Feature, Geometry } from 'geojson';
 
 import { useWeatherStore } from '../../store/useWeatherStore';
-import { getTemperatureColor, getWeatherLabelTr } from '../../utils/colors';
+import { getTemperatureColor } from '../../utils/colors';
 import type { Province } from '../../types';
 import MapLegend from './MapLegend';
 
@@ -270,39 +270,29 @@ export const TurkeyMap: React.FC<TurkeyMapProps> = ({ onProvinceSelect, geoJsonD
         const humidity = weatherData?.humidity;
         const precipitation = Number(weatherData?.precipitation) || 0;
         const windSpeed = Number(weatherData?.wind_speed) || 0;
-        const weatherLabel = getWeatherLabelTr(weatherData?.weather_code);
+        const hasPrecipitation = weatherData?.precipitation !== undefined && weatherData?.precipitation !== null;
 
         const tempText = temp !== undefined && !Number.isNaN(temp) ? `${temp.toFixed(1)}°C` : '-°C';
         const humidityText = humidity !== undefined && !Number.isNaN(humidity) ? `%${humidity.toFixed(0)}` : '-';
-        const tempAvgText = nationalAverages.temperature !== null ? `${nationalAverages.temperature.toFixed(1)}°C` : '-';
-        const humidityAvgText = nationalAverages.humidity !== null ? `%${nationalAverages.humidity.toFixed(0)}` : '-';
-        const windAvgText = nationalAverages.windSpeed !== null ? `${nationalAverages.windSpeed.toFixed(1)} km/h` : '-';
-        const rainAvgText =
-          nationalAverages.precipitation !== null ? `${nationalAverages.precipitation.toFixed(1)} mm` : '-';
+        const rainText = hasPrecipitation ? `${precipitation.toFixed(1)} mm` : '-';
 
         const criticalEvents = getCriticalEvents(weatherData);
-        const criticalText = criticalEvents.length
-          ? criticalEvents.map((event) => `${event.icon} ${event.label}`).join(' • ')
-          : 'Kritik eşik yok';
 
-        let tooltipContent = `<div style="font-weight:700;font-size:16px;color:#1e293b;margin-bottom:4px;">${provinceName}</div>`;
-        if (temp !== undefined && !Number.isNaN(temp)) {
-          tooltipContent += `<div style="font-size:16px;font-weight:700;color:#0f172a;margin-bottom:3px;">Durum: ${weatherLabel}</div>`;
-          tooltipContent += `<div style="font-size:14px;color:#334155;"><b>Sıcaklık:</b> ${tempText} <span style="color:#64748b;">(TR ort: ${tempAvgText})</span></div>`;
-          tooltipContent += `<div style="font-size:14px;color:#334155;"><b>Nem:</b> ${humidityText} <span style="color:#64748b;">(TR ort: ${humidityAvgText})</span></div>`;
-          tooltipContent += `<div style="font-size:14px;color:#334155;"><b>Rüzgar:</b> ${windSpeed.toFixed(1)} km/h <span style="color:#64748b;">(TR ort: ${windAvgText})</span></div>`;
-          tooltipContent += `<div style="font-size:14px;color:#334155;"><b>Yağış:</b> ${precipitation.toFixed(1)} mm <span style="color:#64748b;">(TR ort: ${rainAvgText})</span></div>`;
-          tooltipContent += `<div style="font-size:13px;color:#0f172a;margin-top:4px;"><b>Kritik:</b> ${criticalText}</div>`;
-        } else {
-          tooltipContent += '<div style="font-size:12px;color:#94a3b8;font-style:italic;">Veri bekleniyor...</div>';
-        }
+        const tooltipContent = `
+          <div style="font-weight:700;font-size:12px;color:#0f172a;margin-bottom:4px;">${provinceName}</div>
+          <div style="display:grid;grid-template-columns:1fr;gap:2px;font-size:10.5px;color:#334155;min-width:120px;">
+            <div>🌡️ Sıcaklık: <b>${tempText}</b></div>
+            <div>💧 Nem: <b>${humidityText}</b></div>
+            <div>🌧️ Yağış: <b>${rainText}</b></div>
+          </div>
+        `;
 
         layer.bindTooltip(tooltipContent, {
           permanent: false,
           direction: 'top',
           sticky: true,
           pane: 'provinceTooltipsPane',
-          className: 'province-tooltip',
+          className: 'province-preview-tooltip',
         });
 
         layer.on('click', () => {
@@ -312,21 +302,22 @@ export const TurkeyMap: React.FC<TurkeyMapProps> = ({ onProvinceSelect, geoJsonD
         });
 
         layer.on('mouseover', () => {
-          (layer as L.Path).setStyle({
+          const pathLayer = layer as L.Path;
+          pathLayer.setStyle({
             weight: 4,
             color: '#2563eb',
             fillOpacity: 0.9,
           });
+          pathLayer.bringToFront();
         });
 
         layer.on('mouseout', () => {
-          if (!plateCode || selectedPlateCode !== plateCode) {
-            (layer as L.Path).setStyle({
-              weight: 2,
-              color: '#475569',
-              fillOpacity: 0.72,
-            });
-          }
+          const isSelected = Boolean(plateCode && selectedPlateCode === plateCode);
+          (layer as L.Path).setStyle({
+            weight: isSelected ? 3.5 : 2,
+            color: isSelected ? '#2563eb' : '#475569',
+            fillOpacity: isSelected ? 0.88 : 0.72,
+          });
         });
 
         if (!plateCode || !eventsLayerRef.current || createdEventCodes.has(plateCode) || criticalEvents.length === 0) return;
@@ -487,7 +478,7 @@ export const TurkeyMap: React.FC<TurkeyMapProps> = ({ onProvinceSelect, geoJsonD
   }, [resolvePlateCode, selectedPlateCode]);
 
   return (
-    <div className="relative w-full h-full" style={{ height: '500px' }}>
+    <div className="relative w-full h-full">
       <div ref={containerRef} className="w-full h-full bg-slate-100 dark:bg-slate-800 rounded-lg" />
       <MapLegend />
     </div>

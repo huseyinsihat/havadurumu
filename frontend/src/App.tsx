@@ -668,7 +668,7 @@ function App() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 transition-colors duration-500">
       <Header />
 
-      <main className="max-w-[1600px] mx-auto px-6 py-8 space-y-6 fade-in">
+      <main className="max-w-[1600px] mx-auto px-3 sm:px-6 py-4 sm:py-8 space-y-6 fade-in">
         {error && (
           <div className="p-4 rounded-lg bg-red-50 border-l-4 border-red-500 text-red-800 dark:bg-red-900/20 dark:border-red-600 dark:text-red-200 flex items-start gap-3 justify-between">
             <div className="flex items-start gap-3">
@@ -762,12 +762,12 @@ function App() {
                 </div>
 
                 <div className="xl:col-span-7">
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                    <div className="px-3 py-2 rounded-lg text-sm font-semibold text-blue-700 dark:text-blue-200 border border-blue-200 dark:border-blue-700 bg-blue-50/80 dark:bg-blue-900/30 text-center">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
+                    <div className="px-3 py-2 rounded-lg text-sm font-semibold text-blue-700 dark:text-blue-200 border border-blue-200 dark:border-blue-700 bg-blue-50/80 dark:bg-blue-900/30 text-center truncate">
                       {selectedPlateInfo.name}
                     </div>
 
-                    <div className="px-3 py-2 rounded-lg text-sm font-semibold text-indigo-700 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-700 bg-indigo-50/80 dark:bg-indigo-900/30 text-center">
+                    <div className="px-3 py-2 rounded-lg text-sm font-semibold text-indigo-700 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-700 bg-indigo-50/80 dark:bg-indigo-900/30 text-center truncate">
                       {selectedStatusText}
                     </div>
 
@@ -796,7 +796,7 @@ function App() {
                       Şimdi
                     </button>
                   </div>
-                  <div className="text-[10px] text-slate-500 dark:text-slate-400 text-right pr-1 mt-1">
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400 text-left sm:text-right pr-1 mt-1">
                     Anlık referans: {selectedDateRange.startDate} {selectedTime}
                   </div>
                 </div>
@@ -805,12 +805,12 @@ function App() {
           </div>
 
           <Card contentClassName="p-0">
-            <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/40">
+            <div className="flex items-center gap-2 px-3 sm:px-4 py-2.5 border-b border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/40">
               <MapPin className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              <p className="text-sm text-slate-700 dark:text-slate-300">İl seçmek için harita üzerinden tıklayın</p>
+              <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300">İl seçmek için harita üzerinden tıklayın</p>
             </div>
 
-            <div className="h-[500px] rounded-none overflow-hidden relative">
+            <div className="h-[360px] sm:h-[420px] lg:h-[500px] rounded-none overflow-hidden relative">
               {isLoading && (
                 <div className="absolute inset-0 z-10 bg-white/50 dark:bg-slate-900/50 flex items-center justify-center">
                   <Loading />
@@ -825,9 +825,9 @@ function App() {
             </div>
 
             <div className="border-t border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/40 px-3 py-2">
-              <div className="flex items-center justify-between text-[11px] font-semibold mb-1.5">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-[11px] font-semibold mb-1.5">
                 <span className="text-slate-600 dark:text-slate-300">Plaka Kaydırıcı (1-81)</span>
-                <span className="text-blue-700 dark:text-blue-300">
+                <span className="text-blue-700 dark:text-blue-300 truncate">
                   {selectedPlateInfo.code} - {selectedPlateInfo.name}
                 </span>
               </div>
@@ -1058,7 +1058,7 @@ function App() {
               <WeatherCharts
                 data={displayWeatherData}
                 hourlyMode
-                chartType="windHumidity"
+                chartType="pressure"
                 compact
                 contextLabel={`${selectedProvince.name} • ${selectedDateRange.startDate} • ${selectedTime}`}
                 nationalAverages={chartNationalAverages}
@@ -1066,7 +1066,7 @@ function App() {
               <WeatherCharts
                 data={displayWeatherData}
                 hourlyMode
-                chartType="pressure"
+                chartType="windHumidity"
                 compact
                 contextLabel={`${selectedProvince.name} • ${selectedDateRange.startDate} • ${selectedTime}`}
                 nationalAverages={chartNationalAverages}

@@ -30,45 +30,45 @@ export default function Header() {
   return (
     <>
       <header className="sticky top-0 z-[5000] glass-card bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-white/20 dark:border-slate-700/50">
-        <div className="max-w-[1600px] mx-auto px-6 py-4">
+        <div className="max-w-[1600px] mx-auto px-3 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-fuchsia-600 rounded-xl blur-lg opacity-50 animate-pulse" />
-                <div className="relative bg-gradient-to-r from-blue-500 to-fuchsia-600 p-3 rounded-xl shadow-lg">
-                  <MapPin className="w-7 h-7 text-white" />
+                <div className="relative bg-gradient-to-r from-blue-500 to-fuchsia-600 p-2 sm:p-3 rounded-xl shadow-lg">
+                  <MapPin className="w-5 h-5 sm:w-7 sm:h-7 text-white" />
                 </div>
               </div>
 
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-fuchsia-600 bg-clip-text text-transparent">
+              <div className="min-w-0">
+                <h1 className="text-lg sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-fuchsia-600 bg-clip-text text-transparent leading-tight">
                   Türkiye Hava Durumu Haritası
                 </h1>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">
+                <p className="hidden sm:block text-sm text-slate-600 dark:text-slate-400 mt-0.5">
                   Türkiye&apos;nin 81 ili için saatlik ve karşılaştırmalı hava durumu verilerini görselleştirir.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
               <button
                 onClick={() => setShowInfo((prev) => !prev)}
-                className="p-2.5 rounded-lg bg-white/50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="p-2 sm:p-2.5 rounded-lg bg-white/50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 aria-label="Bilgi"
               >
-                <Info className="w-5 h-5 text-slate-700 dark:text-slate-300" />
+                <Info className="w-4 h-4 sm:w-5 sm:h-5 text-slate-700 dark:text-slate-300" />
               </button>
 
               <button
                 onClick={toggleTheme}
-                className="relative p-2.5 rounded-lg bg-white/50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 overflow-hidden group"
+                className="relative p-2 sm:p-2.5 rounded-lg bg-white/50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 overflow-hidden group"
                 aria-label="Tema Değiştir"
               >
                 <div className="relative z-10">
                   {theme === 'light' ? (
-                    <Moon className="w-5 h-5 text-slate-700 dark:text-slate-300 transition-transform duration-300 group-hover:rotate-12" />
+                    <Moon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-700 dark:text-slate-300 transition-transform duration-300 group-hover:rotate-12" />
                   ) : (
-                    <Sun className="w-5 h-5 text-yellow-500 transition-transform duration-300 group-hover:rotate-45" />
+                    <Sun className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500 transition-transform duration-300 group-hover:rotate-45" />
                   )}
                 </div>
                 <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-orange-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300" />
